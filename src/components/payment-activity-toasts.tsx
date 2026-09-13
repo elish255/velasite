@@ -53,7 +53,7 @@ export function PaymentActivityToasts() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                    Mfano
+                  
                   </span>
                   <button
                     type="button"
