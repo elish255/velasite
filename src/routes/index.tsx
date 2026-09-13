@@ -3,7 +3,7 @@ import { CalendarDays, Clock, Download, Tag, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SiteHeader } from "@/components/site-header";
-import { formatTzs, nextDates, shuffleForeigners, usdEquivalent } from "@/lib/foreigners";
+import { formatTzs, shuffleForeigners, usdEquivalent } from "@/lib/foreigners";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,7 +28,8 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const [showBanner, setShowBanner] = useState(true);
-  const people = useMemo(() => shuffleForeigners(Date.now() / 86400000), []);
+  const people = useMemo(() => shuffleForeigners(), []);
+  const todayLabel = useMemo(() => new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" }).format(new Date()), []);
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -92,7 +93,7 @@ function Home() {
                 </div>
                 <span className="flex items-center gap-2 rounded-xl bg-brand-tint px-3 py-2 text-sm font-bold text-primary">
                   <CalendarDays className="size-4" />
-                  {nextDates[i % nextDates.length]}
+                  {todayLabel}
                 </span>
               </div>
 
