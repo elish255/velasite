@@ -179,9 +179,7 @@
   padding-inline: 1.1rem;
   font-weight: 500;
   outline: none;
-}
 
-@utility input-base {
   &:focus {
     box-shadow: 0 0 0 2px var(--color-ring);
   }
