@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock, Download, MessageCircle, Phone, Tag, X } from "lucide-react";
+import { CalendarDays, Clock, Download, MessageCircle, Tag, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SiteHeader } from "@/components/site-header";
@@ -137,14 +137,6 @@ function Home() {
           ))}
         </div>
       </section>
-
-      <a
-        href="https://wa.me/255700000000"
-        aria-label="WhatsApp"
-        className="fixed bottom-24 right-5 z-30 grid size-14 place-items-center rounded-full bg-card shadow-card ring-1 ring-border"
-      >
-        <Phone className="size-6 text-whatsapp" />
-      </a>
 
       {showBanner && (
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 px-4 pb-4">

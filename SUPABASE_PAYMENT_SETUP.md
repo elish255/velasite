@@ -2,7 +2,7 @@
 
 ## 1. Supabase Database
 
-The project now contains `drizzle/migrations/0001_activation_payments.sql`.
+The project now contains `drizzle/migrations/0001_activation_payments.sql` and then `0002_public_payment_activity.sql`.
 Run the complete SQL file once in **Supabase Dashboard → SQL Editor → New query → Run**.
 
 It creates:

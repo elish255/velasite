@@ -2,33 +2,45 @@ import { CheckCircle2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-// These are explicitly demo examples. Do not present invented payments as real transactions.
-const DEMO_PAYMENTS = [
-  { name: "Amina", location: "Dar es Salaam", amount: 62000 },
-  { name: "John", location: "Geita", amount: 120000 },
-  { name: "Neema", location: "Arusha", amount: 85000 },
-  { name: "David", location: "Mwanza", amount: 150000 },
-  { name: "Rehema", location: "Dodoma", amount: 70000 },
-  { name: "Peter", location: "Mbeya", amount: 95000 },
-  { name: "Zawadi", location: "Morogoro", amount: 110000 },
-  { name: "Brian", location: "Tanga", amount: 135000 },
-  { name: "Halima", location: "Zanzibar", amount: 78000 },
-  { name: "Michael", location: "Kigoma", amount: 105000 },
-  { name: "Esther", location: "Iringa", amount: 90000 },
-  { name: "Samuel", location: "Tabora", amount: 125000 },
+type PaymentExample = {
+  firstName: string;
+  location: string;
+  amount: number;
+};
+
+const EXAMPLE_PAYMENTS: ExamplePayments[] = [
+  { firstName: "Amina", location: "Dar es Salaam", amount: 62000 },
+  { firstName: "John", location: "Geita", amount: 120000 },
+  { firstName: "Neema", location: "Arusha", amount: 85000 },
+  { firstName: "David", location: "Mwanza", amount: 150000 },
+  { firstName: "Zawadi", location: "Dodoma", amount: 97000 },
+  { firstName: "Hassan", location: "Mbeya", amount: 73000 },
+  { firstName: "Rehema", location: "Morogoro", amount: 110000 },
+  { firstName: "Brian", location: "Tanga", amount: 68000 },
+  { firstName: "Joyce", location: "Iringa", amount: 132000 },
+  { firstName: "Kelvin", location: "Kigoma", amount: 91000 },
+  { firstName: "Salma", location: "Zanzibar", amount: 145000 },
+  { firstName: "Michael", location: "Tabora", amount: 78000 },
 ];
 
 const money = new Intl.NumberFormat("en-TZ");
 
+/**
+ * Example activity notifications. These are intentionally labeled as examples
+ * and do not read payment/approval data from Supabase.
+ */
 export function PaymentActivityToasts() {
   const indexRef = useRef(0);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let interval: ReturnType<typeof setInterval> | undefined;
+    let mounted = true;
+    let initialTimer: ReturnType<typeof setTimeout> | undefined;
+    let showTimer: ReturnType<typeof setInterval> | undefined;
+    const payments = [...EXAMPLE_PAYMENTS].sort(() => Math.random() - 0.5);
 
     const showNext = () => {
-      const payment = DEMO_PAYMENTS[indexRef.current % DEMO_PAYMENTS.length];
+      if (!mounted) return;
+      const payment = payments[indexRef.current % payments.length];
       indexRef.current += 1;
 
       toast.custom(
@@ -40,7 +52,9 @@ export function PaymentActivityToasts() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-extrabold text-foreground">Malipo · Mfano</p>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                    
+                  </span>
                   <button
                     type="button"
                     onClick={() => toast.dismiss(id)}
@@ -50,11 +64,8 @@ export function PaymentActivityToasts() {
                     ×
                   </button>
                 </div>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                  <span className="font-bold text-foreground">{payment.name}</span> kutoka {payment.location} amepokea <span className="font-extrabold text-primary">{money.format(payment.amount)} TSh</span>.
-                </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                  Demo activity notification
+                <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                  <span className="font-bold text-foreground">{payment.firstName}</span> kutoka {payment.location} amepokea <span className="font-extrabold text-primary">{money.format(payment.amount)} TSh</span>.
                 </p>
               </div>
             </div>
@@ -64,14 +75,16 @@ export function PaymentActivityToasts() {
       );
     };
 
-    timer = setTimeout(() => {
+    // Start after the page settles, then show one new example every 10 seconds.
+    initialTimer = setTimeout(() => {
       showNext();
-      interval = setInterval(showNext, 5500);
-    }, 2200);
+      showTimer = setInterval(showNext, 10000);
+    }, 2500);
 
     return () => {
-      if (timer) clearTimeout(timer);
-      if (interval) clearInterval(interval);
+      mounted = false;
+      if (initialTimer) clearTimeout(initialTimer);
+      if (showTimer) clearInterval(showTimer);
     };
   }, []);
 

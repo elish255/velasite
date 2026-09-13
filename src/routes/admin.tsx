@@ -157,7 +157,7 @@ function AdminPage() {
             <ArrowLeft className="size-5" />
           </Link>
           <div>
-            <img src="/1vela-logo.jpg" alt="1Vela Admin" className="h-10 w-auto max-w-[145px] rounded-xl object-contain" />
+            <img src="/1vela-logo.jpg" alt="1Vela Admin" className="h-10 w-10 rounded-full bg-white object-contain shadow-sm ring-1 ring-primary/20" />
             <p className="text-xs opacity-80">Payment approvals & users</p>
           </div>
           <div className="ml-auto flex gap-2">

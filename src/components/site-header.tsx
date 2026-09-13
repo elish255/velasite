@@ -33,7 +33,7 @@ export function SiteHeader() {
             <img
               src="/1vela-logo.jpg"
               alt="1Vela — Share your country's vibe"
-              className="h-auto w-[185px] max-w-[52vw] rounded-2xl object-contain shadow-lg ring-1 ring-white/10"
+              className="h-14 w-14 rounded-full bg-white object-contain p-1 shadow-lg ring-2 ring-white/20 sm:h-16 sm:w-16"
             />
           </Link>
 

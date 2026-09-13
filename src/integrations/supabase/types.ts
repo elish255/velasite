@@ -104,6 +104,15 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
       }
+      get_public_payment_activity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          first_name: string
+          location: string
+          amount: number
+          approved_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
