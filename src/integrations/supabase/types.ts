@@ -62,6 +62,39 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_requests: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          phone: string
+          status: string
+          created_at: string
+          processed_at: string | null
+          processed_by: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          phone: string
+          status?: string
+          created_at?: string
+          processed_at?: string | null
+          processed_by?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          phone?: string
+          status?: string
+          created_at?: string
+          processed_at?: string | null
+          processed_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activated: boolean
@@ -103,6 +136,20 @@ export type Database = {
           p_status: string
         }
         Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
+      }
+      request_withdrawal: {
+        Args: {
+          p_amount: number
+          p_phone: string
+        }
+        Returns: Database["public"]["Tables"]["withdrawal_requests"]["Row"]
+      }
+      review_withdrawal: {
+        Args: {
+          p_request_id: string
+          p_status: string
+        }
+        Returns: Database["public"]["Tables"]["withdrawal_requests"]["Row"]
       }
       get_public_payment_activity: {
         Args: Record<PropertyKey, never>

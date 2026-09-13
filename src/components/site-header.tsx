@@ -9,6 +9,7 @@ export function SiteHeader() {
   const [showBalance, setShowBalance] = useState(false);
   const [live, setLive] = useState(2551);
   const [signedIn, setSignedIn] = useState(false);
+  const [balance, setBalance] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -18,9 +19,21 @@ export function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      setSignedIn(Boolean(data.session));
+      if (data.session?.user) {
+        const { data: profile } = await supabase.from("profiles").select("balance").eq("id", data.session.user.id).maybeSingle();
+        setBalance(Number(profile?.balance ?? 0));
+      }
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       setSignedIn(Boolean(session));
+      if (session?.user) {
+        const { data: profile } = await supabase.from("profiles").select("balance").eq("id", session.user.id).maybeSingle();
+        setBalance(Number(profile?.balance ?? 0));
+      } else {
+        setBalance(0);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -80,7 +93,7 @@ export function SiteHeader() {
             <span className="text-sm opacity-80">live</span>
           </div>
           <Link
-            to="/register"
+            to={signedIn ? "/withdrawal" : "/login"}
             className="brand-gradient flex items-center gap-2 rounded-full px-6 py-3 font-bold text-brand-foreground shadow-brand"
           >
             <Wallet className="size-5" />
@@ -99,7 +112,7 @@ export function SiteHeader() {
               Current balance
             </span>
             <span className="mt-1 block font-bold text-gold">
-              {showBalance ? "TZS 0" : "●●●●●"}
+              {showBalance ? `TZS ${balance.toLocaleString("en-US")}` : "●●●●●"}
             </span>
           </span>
         </button>

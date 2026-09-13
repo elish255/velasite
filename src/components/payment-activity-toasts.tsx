@@ -8,7 +8,7 @@ type PaymentExample = {
   amount: number;
 };
 
-const EXAMPLE_PAYMENTS: ExamplePayments[] = [
+const EXAMPLE_PAYMENTS: PaymentExample[] = [
   { firstName: "Amina", location: "Dar es Salaam", amount: 62000 },
   { firstName: "John", location: "Geita", amount: 120000 },
   { firstName: "Neema", location: "Arusha", amount: 85000 },
@@ -53,7 +53,7 @@ export function PaymentActivityToasts() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                    
+                  
                   </span>
                   <button
                     type="button"
@@ -75,10 +75,10 @@ export function PaymentActivityToasts() {
       );
     };
 
-    // Start after the page settles, then show one new example every 10 seconds.
+    // Start after the page settles, then show one new example every 15 seconds.
     initialTimer = setTimeout(() => {
       showNext();
-      showTimer = setInterval(showNext, 10000);
+      showTimer = setInterval(showNext, 150000);
     }, 2500);
 
     return () => {
