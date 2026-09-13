@@ -26,18 +26,16 @@ export const Route = createFileRoute("/chat/$id")({
       ],
     };
   },
-  loader: ({ params }) => {
-    const person = getForeigner(params.id);
-    if (!person) throw notFound();
-    return { person };
-  },
   component: ChatPage,
 });
 
 type Msg = { from: "them" | "me"; text: string };
 
 function ChatPage() {
-  const { person } = Route.useLoaderData();
+  const { id } = Route.useParams();
+  const person = getForeigner(id);
+  if (!person) throw notFound();
+
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(true);
   const [input, setInput] = useState("");
