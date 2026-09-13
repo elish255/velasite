@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock, Download, MessageCircle, Tag, X } from "lucide-react";
+import { CalendarDays, Clock, Download, Tag, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SiteHeader } from "@/components/site-header";
@@ -56,13 +56,7 @@ function Home() {
               AVAILABLE NOW
             </h2>
           </div>
-          <a
-            href="https://wa.me/255700000000"
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-bold shadow-card"
-          >
-            <MessageCircle className="size-4" />
-            Customer services
-          </a>
+
         </div>
 
         <div className="mt-6 grid gap-6">

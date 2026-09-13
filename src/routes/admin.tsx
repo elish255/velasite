@@ -22,6 +22,15 @@ type Profile = {
   activated: boolean;
 };
 
+type WithdrawalRequest = {
+  id: string;
+  user_id: string;
+  amount: number;
+  phone: string;
+  status: "pending" | "paid" | "rejected";
+  created_at: string;
+};
+
 export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({ meta: [{ title: "Admin — 1Vela" }] }),
@@ -35,6 +44,7 @@ function AdminPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadData = useCallback(async (showSpinner = false) => {
@@ -61,7 +71,7 @@ function AdminPage() {
 
     setAuthorized(true);
 
-    const [{ data: paymentRows, error: paymentError }, { data: profileRows, error: profileError }] = await Promise.all([
+    const [{ data: paymentRows, error: paymentError }, { data: profileRows, error: profileError }, { data: withdrawalRows, error: withdrawalError }] = await Promise.all([
       supabase
         .from("payment_requests")
         .select("id, user_id, phone, amount, status, created_at, approved_at")
@@ -70,12 +80,18 @@ function AdminPage() {
         .from("profiles")
         .select("id, full_name, phone, activated")
         .order("created_at", { ascending: false }),
+      supabase
+        .from("withdrawal_requests")
+        .select("id, user_id, amount, phone, status, created_at")
+        .order("created_at", { ascending: false }),
     ]);
 
     if (paymentError) toast.error(paymentError.message);
     if (profileError) toast.error(profileError.message);
+    if (withdrawalError) toast.error(withdrawalError.message);
     setPayments((paymentRows as PaymentRequest[]) ?? []);
     setProfiles((profileRows as Profile[]) ?? []);
+    setWithdrawals((withdrawalRows as WithdrawalRequest[]) ?? []);
     setLoading(false);
     if (showSpinner) setRefreshing(false);
   }, [navigate]);
@@ -98,6 +114,21 @@ function AdminPage() {
     }
 
     toast.success(status === "approved" ? "Payment approved — account imewashwa." : "Payment request imekataliwa.");
+    await loadData();
+  }
+
+  async function reviewWithdrawal(id: string, status: "paid" | "rejected") {
+    setBusyId(id);
+    const { error } = await supabase.rpc("review_withdrawal", {
+      p_request_id: id,
+      p_status: status,
+    });
+    setBusyId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(status === "paid" ? "Withdrawal marked as paid." : "Withdrawal rejected and balance returned.");
     await loadData();
   }
 
@@ -176,6 +207,7 @@ function AdminPage() {
           <Stat icon={<Clock3 className="size-5" />} label="Pending" value={pending.length} />
           <Stat icon={<CheckCircle2 className="size-5" />} label="Approved" value={approved.length} />
           <Stat icon={<ShieldCheck className="size-5" />} label="Active users" value={activeUsers.length} />
+          <Stat icon={<Clock3 className="size-5" />} label="Pending withdrawals" value={withdrawals.filter((w) => w.status === "pending").length} />
         </div>
 
         <section className="mt-7">
@@ -228,6 +260,39 @@ function AdminPage() {
                 </div>
               ))
             )}
+          </div>
+        </section>
+
+        <section className="mt-9">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-extrabold">Withdrawals</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Process pending withdrawal requests.</p>
+            </div>
+            <span className="rounded-full bg-brand-tint px-3 py-1.5 text-sm font-extrabold text-primary">{withdrawals.filter((w) => w.status === "pending").length} pending</span>
+          </div>
+          <div className="mt-4 grid gap-3">
+            {withdrawals.length === 0 ? (
+              <Empty text="Hakuna withdrawal request bado." />
+            ) : withdrawals.map((item) => (
+              <div key={item.id} className="rounded-3xl border border-border bg-card p-5 shadow-card">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-display text-xl font-extrabold text-primary">TZS {Number(item.amount).toLocaleString("en-US")}</p>
+                    <p className="mt-1 text-sm font-semibold">Simu: {item.phone}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">User ID: {item.user_id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString("en-GB")}</p>
+                  </div>
+                  <Status status={item.status === "paid" ? "approved" : item.status === "rejected" ? "rejected" : "pending"} />
+                </div>
+                {item.status === "pending" && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive disabled:opacity-50"><XCircle className="size-4" /> Reject</button>
+                    <button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "paid")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground shadow-brand disabled:opacity-50"><CheckCircle2 className="size-4" /> Mark as Paid</button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </section>
 

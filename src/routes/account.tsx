@@ -105,6 +105,13 @@ function AccountPage() {
               </div>
             )}
 
+            <Link
+              to="/withdrawal"
+              className="mt-5 flex w-full items-center justify-center rounded-2xl bg-brand-tint px-6 py-4 font-extrabold text-primary"
+            >
+              Withdrawal & History
+            </Link>
+
             <button
               type="button"
               onClick={signOut}

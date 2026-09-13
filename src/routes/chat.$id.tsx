@@ -43,6 +43,7 @@ function ChatPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [activated, setActivated] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,10 +101,32 @@ function ChatPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
+  function buildAiReply(text: string) {
+    const normalized = text.toLowerCase().trim();
+    if (/\bkaribu\b/i.test(normalized)) return "Oh, KARIBU! What does that mean? Is it like saying welcome?";
+    if (/\b(habari|mambo|hujambo|niaje)\b/i.test(normalized)) return "I know a little Kiswahili! Does that mean hello/how are you? 😊";
+    if (/\b(asante|shukrani)\b/i.test(normalized)) return "Oh, ASANTE! I think that means thank you, right?";
+    if (/\b(pole)\b/i.test(normalized)) return "I have heard POLE before. Does it mean sorry, or is it a way to comfort someone?";
+    if (/\b(rafiki|marafiki)\b/i.test(normalized)) return "RAFIKI! I like that word. It means friend, right?";
+    if (/\b(nzuri|vizuri|poa)\b/i.test(normalized)) return "Nice! I hear NZURI and POA a lot. Can you teach me another useful word?";
+    if (/\b(kwaheri|tutaonana)\b/i.test(normalized)) return "KWaheri? I think you are saying goodbye. But don't leave yet 😄";
+    if (/\b(simba|yanga)\b/i.test(normalized)) return "You mentioned Simba/Yanga! I know they are big football names in Tanzania. Which one do you support?";
+    if (/\b(tanzania|dar|arusha|mwanza|mbeya|zanzibar)\b/i.test(normalized)) return "Tanzania sounds amazing. What is one place you think every visitor should see?";
+    if (normalized.includes("what does") || normalized.includes("meaning")) return "Good question. Teach me the Kiswahili word you mean and I will try to use it in a sentence.";
+    const replies = [
+      `Interesting! Tell me more about that.`,
+      `I am learning Kiswahili, so please correct my words if I make a mistake.`,
+      `That sounds interesting. What would you recommend to someone visiting Tanzania?`,
+      `Really? I did not know that. Can you explain it in a simple way?`,
+      `I like this topic. What is your own experience with it?`,
+    ];
+    return replies[Math.floor(Math.random() * replies.length)];
+  }
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || sessionEnded) return;
 
     if (checkingAccess || !activated) {
       setShowPaywall(true);
@@ -112,6 +135,12 @@ function ChatPage() {
 
     setMessages((m) => [...m, { from: "me", text }]);
     setInput("");
+    setTyping(true);
+
+    window.setTimeout(() => {
+      setMessages((m) => [...m, { from: "them", text: buildAiReply(text) }]);
+      setTyping(false);
+    }, 1200 + Math.floor(Math.random() * 1200));
   }
 
   return (
@@ -126,17 +155,17 @@ function ChatPage() {
             <p className="truncate font-bold">
               {person.flag} {person.name}
             </p>
-            <p className="text-xs opacity-80">{typing ? "typing…" : "Online"}</p>
+            <p className="text-xs opacity-80">{typing ? "typing…" : "AI chat partner"}</p>
           </div>
           <span className="ml-auto rounded-full bg-brand-dark/50 px-3 py-1.5 text-xs font-bold">
-            {person.minutes} min
+            {person.minutes} min session
           </span>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-3 px-4 py-6">
         <p className="mx-auto w-fit rounded-full bg-muted px-4 py-1.5 text-xs font-semibold text-muted-foreground">
-          {person.topic}
+          {person.topic} · AI chat partner
         </p>
         {messages.map((m, i) => (
           <div key={i} className={m.from === "me" ? "flex justify-end" : "flex justify-start"}>
@@ -151,6 +180,11 @@ function ChatPage() {
             </p>
           </div>
         ))}
+        {sessionEnded && (
+          <div className="rounded-2xl bg-brand-tint px-4 py-3 text-center text-sm font-bold text-primary">
+            This chat session has ended. Start another chat to continue.
+          </div>
+        )}
         {typing && (
           <div className="flex justify-start">
             <p className="rounded-3xl rounded-bl-md bg-card px-4 py-3 text-muted-foreground shadow-card">
@@ -167,12 +201,14 @@ function ChatPage() {
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2">
           <input
+            disabled={sessionEnded}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Andika ujumbe wako…"
             className="h-12 flex-1 rounded-full border border-input bg-background px-5 outline-none focus:ring-2 focus:ring-ring"
           />
           <button
+            disabled={sessionEnded}
             type="submit"
             aria-label="Send"
             className="brand-gradient grid size-12 shrink-0 place-items-center rounded-full text-brand-foreground shadow-brand"
