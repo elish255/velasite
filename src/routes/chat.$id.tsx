@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, SendHorizonal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import { PaywallDialog } from "@/components/paywall-dialog";
 import { getForeigner } from "@/lib/foreigners";
@@ -40,7 +41,44 @@ function ChatPage() {
   const [typing, setTyping] = useState(true);
   const [input, setInput] = useState("");
   const [showPaywall, setShowPaywall] = useState(false);
+  const [activated, setActivated] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("activated")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        if (active) setActivated(Boolean(profile?.activated));
+      }
+      if (active) setCheckingAccess(false);
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (checkingAccess || activated) return;
+
+    const timer = window.setInterval(async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("activated")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (profile?.activated) setActivated(true);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [checkingAccess, activated]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -66,9 +104,14 @@ function ChatPage() {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
+
+    if (checkingAccess || !activated) {
+      setShowPaywall(true);
+      return;
+    }
+
     setMessages((m) => [...m, { from: "me", text }]);
     setInput("");
-    setTimeout(() => setShowPaywall(true), 500);
   }
 
   return (

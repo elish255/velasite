@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      payment_requests: {
+        Row: {
+          id: string
+          user_id: string
+          phone: string
+          amount: number
+          status: string
+          created_at: string
+          approved_at: string | null
+          approved_by: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          phone: string
+          amount?: number
+          status?: string
+          created_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          phone?: string
+          amount?: number
+          status?: string
+          created_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activated: boolean
@@ -49,7 +97,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      review_activation_payment: {
+        Args: {
+          p_request_id: string
+          p_status: string
+        }
+        Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
+      }
     }
     Enums: {
       [_ in never]: never

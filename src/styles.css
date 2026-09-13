@@ -184,3 +184,8 @@
     box-shadow: 0 0 0 2px var(--color-ring);
   }
 }
+
+/* Payment activity notifications stay prominent at the top without covering the status bar. */
+[data-sonner-toaster][data-y-position="top"] {
+  top: max(1rem, env(safe-area-inset-top)) !important;
+}

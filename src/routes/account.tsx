@@ -68,7 +68,7 @@ function AccountPage() {
           <Link to="/" aria-label="Rudi" className="grid size-10 place-items-center rounded-full bg-brand-dark/50">
             <ArrowLeft className="size-5" />
           </Link>
-          <span className="font-display text-2xl font-extrabold">①Vela</span>
+          <img src="/1vela-logo.jpg" alt="1Vela" className="h-12 w-auto max-w-[160px] rounded-xl object-contain" />
         </div>
       </div>
 
@@ -97,10 +97,10 @@ function AccountPage() {
                   Activate account yako kwa mtaji wa 15,000 TZS ili uanze kuchati na kulipwa.
                 </p>
                 <a
-                  href="https://wa.me/255700000000"
+                  href="/payment"
                   className="brand-gradient mt-4 flex items-center justify-center rounded-2xl px-6 py-4 font-extrabold text-brand-foreground shadow-brand"
                 >
-                  Activate kwa 15,000 TZS
+                  Lipia Activation fee — 15,000 TZS
                 </a>
               </div>
             )}

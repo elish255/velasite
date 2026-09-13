@@ -30,12 +30,11 @@ export function SiteHeader() {
       <div className="mx-auto w-full max-w-3xl px-5 pb-6 pt-5">
         <div className="flex items-start justify-between">
           <Link to="/" className="block">
-            <span className="font-display text-3xl font-extrabold tracking-tight">
-              ①Vela
-            </span>
-            <p className="mt-1 text-xs font-medium opacity-75">
-              Share your countrie&apos;s vibe
-            </p>
+            <img
+              src="/1vela-logo.jpg"
+              alt="1Vela — Share your country's vibe"
+              className="h-auto w-[185px] max-w-[52vw] rounded-2xl object-contain shadow-lg ring-1 ring-white/10"
+            />
           </Link>
 
           <div className="flex items-center gap-3">

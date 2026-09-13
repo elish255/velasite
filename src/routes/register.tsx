@@ -65,7 +65,7 @@ function RegisterPage() {
           <Link to="/" aria-label="Rudi" className="grid size-10 place-items-center rounded-full bg-brand-dark/50">
             <ArrowLeft className="size-5" />
           </Link>
-          <span className="font-display text-2xl font-extrabold">①Vela</span>
+          <img src="/1vela-logo.jpg" alt="1Vela" className="h-12 w-auto max-w-[160px] rounded-xl object-contain" />
         </div>
       </div>
 
