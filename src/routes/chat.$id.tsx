@@ -43,52 +43,170 @@ function nowTime() {
 }
 
 function translateToSwahili(text: string) {
-  const lower = text.toLowerCase();
+  // Exact translations for every generated chat reply keep the translation
+  // natural and complete, including mixed English/Kiswahili messages.
   const exact: Record<string, string> = {
-    "hi! habari yako? 😊": "Habari yako? 😊",
-    "hola! mambo vipi? 👋": "Habari! Mambo vipi? 👋",
-    "good evening! karibu 🙌": "Habari za jioni! Karibu 🙌",
-    "konnichiwa! habari za jioni 🍜": "Habari! Habari za jioni 🍜",
-    "salut! shikamoo 😄": "Habari! Shikamoo 😄",
-    "oi! vipi rafiki ⚽": "Habari! Vipi rafiki? ⚽",
-    "hallo! habari ya kazi? 📚": "Habari! Habari ya kazi? 📚",
-    "hey there! mambo 👋": "Habari! Mambo? 👋",
-    "oh, karibu! what does that mean? is it like saying welcome?": "Oh, KARIBU! Hilo lina maana gani? Ni kama kusema welcome?",
-    "i know a little kiswahili! does that mean hello/how are you? 😊": "Najua Kiswahili kidogo! Hilo lina maana ya hello/habari yako? 😊",
-    "oh, asante! i think that means thank you, right?": "Oh, ASANTE! Nafikiri hiyo ina maana ya thank you, sawa?",
-    "i have heard pole before. does it mean sorry, or is it a way to comfort someone?": "Nimeshawahi kusikia POLE. Ina maana ya samahani, au ni neno la kumfariji mtu?",
-    "rafiki! i like that word. it means friend, right?": "RAFIKI! Ninalipenda hilo neno. Lina maana ya friend, sawa?",
+    "Hi! Habari yako? 😊": "Habari yako? 😊",
+    "Hola! Mambo vipi? 👋": "Habari! Mambo vipi? 👋",
+    "Good evening! Karibu 🙌": "Habari za jioni! Karibu 🙌",
+    "Konnichiwa! Habari za jioni 🍜": "Habari! Habari za jioni 🍜",
+    "Salut! Shikamoo 😄": "Habari! Shikamoo 😄",
+    "Oi! Vipi rafiki ⚽": "Habari! Vipi rafiki? ⚽",
+    "Hallo! Habari ya kazi? 📚": "Habari! Habari ya kazi? 📚",
+    "Hey there! Mambo 👋": "Habari! Mambo? 👋",
+    "I know a little Kiswahili! Does that mean hello/how are you? 😊": "Najua Kiswahili kidogo! Hilo lina maana ya hello/habari yako? 😊",
+    "Oh, ASANTE! I think that means thank you, right?": "Oh, ASANTE! Nafikiri hiyo ina maana ya asante, sawa?",
+    "I have heard POLE before. Does it mean sorry, or is it a way to comfort someone?": "Nimeshawahi kusikia POLE. Ina maana ya samahani, au ni neno la kumfariji mtu?",
+    "RAFIKI! I like that word. It means friend, right?": "RAFIKI! Ninalipenda hilo neno. Lina maana ya rafiki, sawa?",
+    "Oh, KARIBU! What does that mean? Is it like saying welcome?": "Oh, KARIBU! Hilo lina maana gani? Ni kama kusema karibu?",
+    "Oh, KARIBU! 😄 I think that means welcome, right? What other Swahili word should I learn?": "Oh, KARIBU! 😄 Nafikiri hiyo ina maana ya karibu, sawa? Ni neno gani lingine la Kiswahili nijifunze?",
+    "Ah, HABARI! 😊 I think you are asking how I am. Niko vizuri? Did I say that correctly?": "Ah, HABARI! 😊 Nafikiri unauliza hali yangu. Niko vizuri? Nimesema kwa usahihi?",
+    "Oh, ASANTE! I know this one means thank you 😄. Am I getting better at Kiswahili?": "Oh, ASANTE! Najua hili lina maana ya asante 😄. Je, naendelea kuboresha Kiswahili changu?",
+    "RAFIKI! I like that word 😄. It means friend, right? Naweza kusema hivyo to a new friend?": "RAFIKI! Ninalipenda hilo neno 😄. Lina maana ya rafiki, sawa? Naweza kusema hivyo kwa rafiki mpya?",
+    "Nice! NZURI and POA sound useful. 😄 Can you teach me one more word leo?": "Nzuri! NZURI na POA yanaonekana kuwa maneno muhimu. 😄 Unaweza kunifundisha neno moja zaidi leo?",
+    "Kwaheri? I think that means goodbye. But don't leave yet 😄, bado tunaongea!": "Kwaheri? Nafikiri hiyo ina maana ya kuaga. Lakini usiondoke bado 😄, bado tunaongea!",
+    "You mentioned Simba/Yanga! I know they are big football names in Tanzania. Which one do you support, rafiki?": "Umetaja Simba/Yanga! Najua ni majina makubwa kwenye mpira Tanzania. Unaunga mkono timu gani, rafiki?",
+    "Tanzania sounds amazing! Ningependa kutembelea one day. What place should I visit first?": "Tanzania inasikika vizuri sana! Ningependa kutembelea siku moja. Ni sehemu gani nitembelee kwanza?",
+    "I love talking about food 😄. Chakula gani should I try first when I visit Tanzania?": "Napenda kuzungumzia chakula 😄. Ni chakula gani nijaribu kwanza nikitembelea Tanzania?",
+    "I enjoy Bongo Flava! 🎵 Ni msanii gani should I add to my playlist?": "Napenda Bongo Flava! 🎵 Ni msanii gani nimwongeze kwenye playlist yangu?",
+    "I keep hearing about mobile money in Tanzania. Inatumika kila mahali, or only in cities?": "Ninaendelea kusikia kuhusu mobile money Tanzania. Inatumika kila mahali, au mijini tu?",
+    "Good question 😄. Tell me the Kiswahili word and I will try to explain it. Pole if my Swahili is not perfect!": "Swali zuri 😄. Niambie neno la Kiswahili nami nitajaribu kulieleza. Pole kama Kiswahili changu si kizuri kabisa!",
+    "Interesting! Tell me more about that, rafiki. 😊": "Inavutia! Niambie zaidi kuhusu hilo, rafiki. 😊",
+    "I am still learning Kiswahili, so please correct me nikikosea.": "Bado najifunza Kiswahili, kwa hiyo tafadhali nirekebishe nikikosea.",
+    "That sounds interesting. What would you recommend for a visitor to Tanzania?": "Hilo linasikika vizuri. Ungependekeza nini kwa mgeni anayekuja Tanzania?",
+    "Really? Sikujua hilo 😄. Can you explain a little more?": "Kweli? Sikujua hilo 😄. Unaweza kueleza zaidi kidogo?",
+    "I like this topic! We can practise Kiswahili together, sawa?": "Ninalipenda hili somo! Tunaweza kufanya mazoezi ya Kiswahili pamoja, sawa?",
+    "Okay, I understand a little. Unaweza kunifundisha the natural way to say it?": "Sawa, nimeelewa kidogo. Unaweza kunifundisha jinsi ya kusema hivyo kwa kawaida?",
+    "Haha, nice! I am learning slowly lakini I am enjoying it. 😄": "Haha, vizuri! Najifunza polepole lakini ninafurahia. 😄",
+    "That makes sense. Asante for teaching me — what should I learn next?": "Hilo linaeleweka. Asante kwa kunifundisha — nijifunze nini kinachofuata?",
   };
-  if (exact[lower]) return exact[lower];
-  if (lower.includes("what should i eat")) return "Niambie, nile chakula gani kwanza nikifika Tanzania?";
-  if (lower.includes("can you help me practise")) return "Unaweza kunisaidia kufanya mazoezi ya sentensi tano muhimu za Kiswahili leo?";
-  if (lower.includes("can you teach me")) return "Unaweza kunifundisha?";
-  if (lower.includes("which artist")) return "Ni msanii gani nimwongeze kwenye playlist yangu wiki hii?";
-  if (lower.includes("which one do you support")) return "Unaunga mkono timu gani?";
-  if (lower.includes("mobile money")) return "Je, mobile money inatumika kila mahali Tanzania?";
-  if (lower.includes("what is one place")) return "Ni sehemu gani moja unafikiri kila mgeni anapaswa kutembelea?";
-  if (lower.includes("what does") || lower.includes("meaning")) return "Hilo lina maana gani?";
-  return "Ujumbe huu unahusiana na mazungumzo yetu. Gusa tena kuona English.";
+  if (exact[text]) return exact[text];
+
+  // This is an in-app phrase translator for the demo chat. It translates
+  // mixed English/Swahili messages by phrase first, then by common words,
+  // while keeping names, emojis and Swahili words that need no translation.
+  const phraseMap: Array<[RegExp, string]> = [
+    [/\bi'?m still learning kiswahili\b/gi, "bado najifunza Kiswahili"],
+    [/\bi am still learning swahili\b/gi, "bado najifunza Kiswahili"],
+    [/\bi'?m learning kiswahili\b/gi, "najifunza Kiswahili"],
+    [/\bi need a patient partner\b/gi, "nahitaji mtu mwenye subira wa kufanya naye mazoezi"],
+    [/\bwhat does that mean\b/gi, "hilo lina maana gani"],
+    [/\bwhat does (?:this|that) word mean\b/gi, "hilo neno lina maana gani"],
+    [/\bis it like saying welcome\b/gi, "ni kama kusema karibu"],
+    [/\bi think that means thank you\b/gi, "nafikiri hiyo ina maana ya asante"],
+    [/\bdoes it mean sorry\b/gi, "ina maana ya samahani"],
+    [/\bhow are you doing today\b/gi, "unaendeleaje leo"],
+    [/\bhow are you\b/gi, "habari yako"],
+    [/\btell me more about that\b/gi, "niambie zaidi kuhusu hilo"],
+    [/\bcan you help me\b/gi, "unaweza kunisaidia"],
+    [/\bcan you teach me\b/gi, "unaweza kunifundisha"],
+    [/\bplease be honest with me\b/gi, "tafadhali niambie ukweli"],
+    [/\bwhat should i eat first\b/gi, "nile nini kwanza"],
+    [/\bwhen i arrive in tanzania\b/gi, "nikifika Tanzania"],
+    [/\bwhen i arrive\b/gi, "nikifika"],
+    [/\bwhat would you recommend\b/gi, "ungependekeza nini"],
+    [/\bwhat do you recommend\b/gi, "unapendekeza nini"],
+    [/\bwhat is your experience\b/gi, "uzoefu wako ni upi"],
+    [/\bwhich one do you support\b/gi, "unaunga mkono ipi"],
+    [/\bwhich artist should i add\b/gi, "nimwongeze msanii gani"],
+    [/\bcan you explain it\b/gi, "unaweza kueleza"],
+    [/\bin a simple way\b/gi, "kwa njia rahisi"],
+    [/\bi did not know that\b/gi, "sikujua hilo"],
+    [/\bi like this topic\b/gi, "ninalipenda hili somo"],
+    [/\btell me more\b/gi, "niambie zaidi"],
+    [/\bwhat does .* mean\b/gi, "hilo lina maana gani"],
+  ];
+
+  const wordMap: Record<string, string> = {
+    hi: "habari",
+    hello: "habari",
+    hey: "hey",
+    good: "nzuri",
+    evening: "jioni",
+    morning: "asubuhi",
+    today: "leo",
+    tomorrow: "kesho",
+    friend: "rafiki",
+    friends: "marafiki",
+    welcome: "karibu",
+    thank: "shukuru",
+    thanks: "asante",
+    thankyou: "asante",
+    sorry: "samahani",
+    please: "tafadhali",
+    yes: "ndiyo",
+    no: "hapana",
+    fine: "vizuri",
+    great: "vizuri sana",
+    nice: "nzuri",
+    interesting: "inavutia",
+    really: "kweli",
+    know: "jua",
+    learn: "jifunza",
+    learning: "kujifunza",
+    teach: "fundisha",
+    help: "saidia",
+    what: "nini",
+    where: "wapi",
+    when: "lini",
+    why: "kwa nini",
+    how: "vipi",
+    means: "inamaanisha",
+    mean: "maanisha",
+    word: "neno",
+    words: "maneno",
+    today: "leo",
+    tomorrow: "kesho",
+    tanzania: "Tanzania",
+    zanzibar: "Zanzibar",
+    football: "mpira wa miguu",
+    music: "muziki",
+    food: "chakula",
+    water: "maji",
+  };
+
+  let result = text;
+  for (const [pattern, replacement] of phraseMap) result = result.replace(pattern, replacement);
+
+  // Translate common standalone English words after phrase translation.
+  result = result.replace(/\b[A-Za-z']+\b/g, (word) => {
+    const key = word.toLowerCase().replace(/['’]/g, "");
+    return wordMap[key] ?? word;
+  });
+
+  const punctuation = result.trim();
+  if (!punctuation) return text;
+  return punctuation;
 }
 
 function buildAiReply(text: string) {
   const normalized = text.toLowerCase().trim();
-  if (/\bkaribu\b/i.test(normalized)) return "Oh, KARIBU! What does that mean? Is it like saying welcome?";
-  if (/\b(habari|mambo|hujambo|niaje)\b/i.test(normalized)) return "I know a little Kiswahili! Does that mean hello/how are you? 😊";
-  if (/\b(asante|shukrani)\b/i.test(normalized)) return "Oh, ASANTE! I think that means thank you, right?";
-  if (/\b(pole)\b/i.test(normalized)) return "I have heard POLE before. Does it mean sorry, or is it a way to comfort someone?";
-  if (/\b(rafiki|marafiki)\b/i.test(normalized)) return "RAFIKI! I like that word. It means friend, right?";
-  if (/\b(nzuri|vizuri|poa)\b/i.test(normalized)) return "Nice! I hear NZURI and POA a lot. Can you teach me another useful word?";
-  if (/\b(kwaheri|tutaonana)\b/i.test(normalized)) return "KWaheri? I think you are saying goodbye. But don't leave yet 😄";
-  if (/\b(simba|yanga)\b/i.test(normalized)) return "You mentioned Simba/Yanga! I know they are big football names in Tanzania. Which one do you support?";
-  if (/\b(tanzania|dar|arusha|mwanza|mbeya|zanzibar)\b/i.test(normalized)) return "Tanzania sounds amazing. What is one place you think every visitor should see?";
-  if (normalized.includes("what does") || normalized.includes("meaning")) return "Good question. Teach me the Kiswahili word you mean and I will try to use it in a sentence.";
+
+  // Replies intentionally mix English with simple Kiswahili, like a foreign
+  // learner who knows a few words but is still practising.
+  if (/\bkaribu\b/i.test(normalized)) return "Oh, KARIBU! 😄 I think that means welcome, right? What other Swahili word should I learn?";
+  if (/\b(habari|mambo|hujambo|niaje)\b/i.test(normalized)) return "Ah, HABARI! 😊 I think you are asking how I am. Niko vizuri? Did I say that correctly?";
+  if (/\b(asante|shukrani)\b/i.test(normalized)) return "Oh, ASANTE! I know this one means thank you 😄. Am I getting better at Kiswahili?";
+  if (/\bpole\b/i.test(normalized)) return "I have heard POLE before. Does it mean sorry, or is it used to comfort someone?";
+  if (/\b(rafiki|marafiki)\b/i.test(normalized)) return "RAFIKI! I like that word 😄. It means friend, right? Naweza kusema hivyo to a new friend?";
+  if (/\b(nzuri|vizuri|poa)\b/i.test(normalized)) return "Nice! NZURI and POA sound useful. 😄 Can you teach me one more word leo?";
+  if (/\b(kwaheri|tutaonana)\b/i.test(normalized)) return "Kwaheri? I think that means goodbye. But don't leave yet 😄, bado tunaongea!";
+  if (/\b(simba|yanga)\b/i.test(normalized)) return "You mentioned Simba/Yanga! I know they are big football names in Tanzania. Which one do you support, rafiki?";
+  if (/\b(tanzania|dar|arusha|mwanza|mbeya|zanzibar)\b/i.test(normalized)) return "Tanzania sounds amazing! Ningependa kutembelea one day. What place should I visit first?";
+  if (/\b(chakula|food|pilau|wali|nyama)\b/i.test(normalized)) return "I love talking about food 😄. Chakula gani should I try first when I visit Tanzania?";
+  if (/\b(music|muziki|bongo|artist|msanii)\b/i.test(normalized)) return "I enjoy Bongo Flava! 🎵 Ni msanii gani should I add to my playlist?";
+  if (/\b(mobile money|mpesa|m-pesa|airtel money)\b/i.test(normalized)) return "I keep hearing about mobile money in Tanzania. Inatumika kila mahali, or only in cities?";
+  if (/\b(what does|meaning|maana)\b/i.test(normalized)) return "Good question 😄. Tell me the Kiswahili word and I will try to explain it. Pole if my Swahili is not perfect!";
+
   const replies = [
-    "Interesting! Tell me more about that.",
-    "I am learning Kiswahili, so please correct my words if I make a mistake.",
-    "That sounds interesting. What would you recommend to someone visiting Tanzania?",
-    "Really? I did not know that. Can you explain it in a simple way?",
-    "I like this topic. What is your own experience with it?",
+    "Interesting! Tell me more about that, rafiki. 😊",
+    "I am still learning Kiswahili, so please correct me nikikosea.",
+    "That sounds interesting. What would you recommend for a visitor to Tanzania?",
+    "Really? Sikujua hilo 😄. Can you explain a little more?",
+    "I like this topic! We can practise Kiswahili together, sawa?",
+    "Okay, I understand a little. Unaweza kunifundisha the natural way to say it?",
+    "Haha, nice! I am learning slowly lakini I am enjoying it. 😄",
+    "That makes sense. Asante for teaching me — what should I learn next?",
   ];
   return replies[Math.floor(Math.random() * replies.length)];
 }
