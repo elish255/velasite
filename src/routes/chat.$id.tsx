@@ -53,6 +53,7 @@ function ChatPage() {
   const messageCountRef = useRef(0);
   const [translated, setTranslated] = useState<Record<number, boolean>>({});
   const rewardShownRef = useRef(false);
+  const sessionIdRef = useRef(crypto.randomUUID());
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -170,14 +171,28 @@ function ChatPage() {
     return replies[Math.floor(Math.random() * replies.length)];
   }
 
-  function finishSession() {
+  async function finishSession() {
     if (rewardShownRef.current) return;
     rewardShownRef.current = true;
     setTyping(false);
+
+    const { data, error } = await supabase.rpc("credit_chat_reward", {
+      p_session_id: sessionIdRef.current,
+      p_foreigner_id: person.id,
+      p_amount: person.priceTzs,
+    });
+
     setSessionEnded(true);
-    window.setTimeout(() => {
-      toast.success(`🎉 Mfano wa malipo: umefunga session ya ujumbe 20 — TZS ${person.priceTzs.toLocaleString("en-US")}`);
-    }, 300);
+
+    if (error) {
+      toast.error("Reward haijaongezwa kwenye Current Balance. Tafadhali jaribu tena au wasiliana na admin.");
+      console.error("credit_chat_reward failed", error);
+      return;
+    }
+
+    const reward = Number(data ?? person.priceTzs);
+    window.dispatchEvent(new Event("vela:balance-updated"));
+    toast.success(`🎉 Umefikia ujumbe 20! Umeongezewa TZS ${reward.toLocaleString("en-US")} kwenye Current Balance.`);
   }
 
   function handleSend(e: React.FormEvent) {
@@ -197,7 +212,7 @@ function ChatPage() {
     setInput("");
 
     if (nextCount >= 20) {
-      finishSession();
+      void finishSession();
       return;
     }
 
@@ -209,7 +224,7 @@ function ChatPage() {
       messageCountRef.current = incomingCount;
       setMessageCount(incomingCount);
       if (incomingCount >= 20) {
-        finishSession();
+        void finishSession();
       } else {
         setTyping(false);
       }

@@ -35,7 +35,26 @@ export function SiteHeader() {
         setBalance(0);
       }
     });
-    return () => sub.subscription.unsubscribe();
+
+    const refreshBalance = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        setBalance(0);
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      setBalance(Number(profile?.balance ?? 0));
+    };
+
+    window.addEventListener("vela:balance-updated", refreshBalance);
+    return () => {
+      sub.subscription.unsubscribe();
+      window.removeEventListener("vela:balance-updated", refreshBalance);
+    };
   }, []);
 
   return (

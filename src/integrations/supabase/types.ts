@@ -29,6 +29,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_reward_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          foreigner_id: string
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          foreigner_id: string
+          amount: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          foreigner_id?: string
+          amount?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       payment_requests: {
         Row: {
           id: string
@@ -130,6 +157,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      credit_chat_reward: {
+        Args: {
+          p_session_id: string
+          p_foreigner_id: string
+          p_amount: number
+        }
+        Returns: number
+      }
       review_activation_payment: {
         Args: {
           p_request_id: string
