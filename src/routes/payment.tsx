@@ -153,7 +153,9 @@ function PaymentPage() {
           <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-brand-tint text-primary">
             <WalletCards className="size-8" />
           </div>
-          <h1 className="mt-4 font-display text-3xl font-extrabold">Lipia Activation Fee</h1>
+          <h1 className="mt-4 font-display text-3xl font-extrabold">OFA YA LEO
+          Lipia Activation Fee
+          12,000TZS</h1>
           <p className="mt-2 text-muted-foreground">
             Lipia kisha weka namba ya simu uliyofanya malipo.
           </p>
