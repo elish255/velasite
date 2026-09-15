@@ -5,9 +5,9 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 
-const PAYMENT_AMOUNT = 15000;
-const LIPA_NUMBER = "251161660";
-const BUSINESS_NAME = "ASSERT BRIDGE";
+const PAYMENT_AMOUNT = 12000;
+const LIPA_NUMBER = "251226427";
+const BUSINESS_NAME = "INOCENT EDWARD";
 
 type PaymentStatus = "pending" | "approved" | "rejected";
 
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/payment")({
       { title: "Lipia Activation Fee — 1Vela" },
       {
         name: "description",
-        content: "Maelekezo ya kulipia activation fee ya 15,000 TZS kwenye 1Vela.",
+        content: "Maelekezo ya kulipia activation fee ya 12,000 TZS kwenye 1Vela.",
       },
     ],
   }),
@@ -196,7 +196,7 @@ function PaymentPage() {
                 <>Chagua <strong>Lipa kwa M-PESA</strong></>,
                 <>Chagua <strong>LIPA KWA SIMU / HALOPESA</strong></>,
                 <>Weka LIPA NAMBA: <PaymentNumber onCopy={copyNumber} /></>,
-                <>Weka kiasi <strong>15,000 TZS</strong></>,
+                <>Weka kiasi <strong>12,000 TZS</strong></>,
                 <>Weka namba ya siri na ruhusu muamala.</>,
               ]}
             />
@@ -210,7 +210,7 @@ function PaymentPage() {
                 <>Chagua <strong>Kwenda mitandao mingine</strong></>,
                 <>Chagua <strong>HALOPESA</strong></>,
                 <>Weka LIPA NAMBA: <PaymentNumber onCopy={copyNumber} /></>,
-                <>Weka kiasi <strong>15,000 TZS</strong></>,
+                <>Weka kiasi <strong>12,000 TZS</strong></>,
                 <>Weka namba ya siri na ruhusu muamala.</>,
               ]}
             />
@@ -223,7 +223,7 @@ function PaymentPage() {
                 <>Chagua <strong>Lipia Bili</strong></>,
                 <>Chagua <strong>LIPA KWA SIMU (MITANDAO YOTE)</strong></>,
                 <>Chagua <strong>LIPA KWA HALOPESA</strong></>,
-                <>Weka kiasi <strong>15,000 TZS</strong></>,
+                <>Weka kiasi <strong>12,000 TZS</strong></>,
                 <>Ingiza kumbukumbu ya malipo: <PaymentNumber onCopy={copyNumber} /></>,
                 <>Ingiza namba ya siri kuruhusu muamala.</>,
               ]}
@@ -237,7 +237,7 @@ function PaymentPage() {
                 <>Chagua <strong>(5) Lipia Bidhaa</strong></>,
                 <>Chagua <strong>HALOPESA</strong></>,
                 <>Weka namba ya malipo: <PaymentNumber onCopy={copyNumber} /></>,
-                <>Weka kiasi <strong>15,000 TZS</strong></>,
+                <>Weka kiasi <strong>12,000 TZS</strong></>,
                 <>Ingiza namba ya siri.</>,
                 <>Bonyeza <strong>1</strong> kuruhusu muamala.</>,
               ]}
@@ -281,7 +281,7 @@ function PaymentPage() {
             </div>
           ) : request?.status === "rejected" ? (
             <div className="mt-4 rounded-2xl bg-destructive/10 px-4 py-4 text-sm font-bold text-destructive">
-              Payment request imekataliwa. Hakikisha umeweka namba sahihi na umetuma 15,000 TZS, kisha jaribu tena.
+              Payment request imekataliwa. Hakikisha umeweka namba sahihi na umetuma 12,000 TZS, kisha jaribu tena.
             </div>
           ) : null}
 
