@@ -28,7 +28,7 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
         </h2>
         <p className="mt-3 rounded-2xl bg-brand-tint p-4 text-[15px] font-semibold leading-relaxed text-secondary-foreground">
           Jisajili kisha lipia <span className="text-primary">Activation fee</span> ya
-          <span className="text-primary">15,000 TZS</span> ili uendelee kuchat na kulipwa.
+          <span className="text-primary">12,000 TZS</span> ili uendelee kuchat na kulipwa.
         </p>
 
         <Link
