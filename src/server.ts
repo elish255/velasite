@@ -2,6 +2,12 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  handleFimipayPayment,
+  handleFimipayPaymentStatus,
+  handleFimipayWebhook,
+  handleFimipayWithdrawal,
+} from "./lib/fimipay-handlers.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +53,20 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      if (url.pathname === "/api/fimipay/payment" && request.method === "POST") {
+        return await handleFimipayPayment(request);
+      }
+      if (url.pathname === "/api/fimipay/payment-status" && request.method === "GET") {
+        return await handleFimipayPaymentStatus(request);
+      }
+      if (url.pathname === "/api/fimipay/withdrawal" && request.method === "POST") {
+        return await handleFimipayWithdrawal(request);
+      }
+      if (url.pathname === "/api/fimipay/webhook" && request.method === "POST") {
+        return await handleFimipayWebhook(request);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

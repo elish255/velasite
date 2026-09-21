@@ -35,15 +35,23 @@ function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
-    setLoading(false);
     if (signInError) {
+      setLoading(false);
       setError(signInError.message);
       return;
     }
+    const { data: profile } = await supabase.from("profiles").select("banned, ban_reason").eq("id", signInData.user.id).maybeSingle();
+    if (profile?.banned) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError(profile.ban_reason || "Akaunti yako imezuiwa na admin.");
+      return;
+    }
+    setLoading(false);
     navigate({ to: "/account" });
   }
 

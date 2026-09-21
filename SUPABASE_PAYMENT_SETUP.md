@@ -46,8 +46,8 @@ This payment workflow does not need the service-role key.
 1. User opens a foreigner's chat.
 2. User sends a message.
 3. If the account is not activated, the paywall asks the user to register/activate.
-4. From **Akaunti yangu**, **Lipia Activation fee — 15,000 TZS** opens `/payment`.
-5. User follows the USSD instructions using LIPA NAMBA `251161660` and amount `15,000 TZS`.
+4. From **Akaunti yangu**, **Lipia Activation fee — 12,000 TZS** opens `/payment`.
+5. User follows the USSD instructions using LIPA NAMBA `251161660` and amount `12,000 TZS`.
 6. User enters the phone number used for the payment and presses **Nimelipia**.
 7. The app saves the request as `pending` and shows **Waiting for your Payment Approval**.
 8. Admin opens `/admin`, verifies the payment, then clicks **Approve & Activate**.

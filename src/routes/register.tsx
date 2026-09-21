@@ -134,7 +134,7 @@ function RegisterPage() {
         </form>
 
         <p className="mt-5 rounded-2xl bg-brand-tint p-4 text-sm font-semibold text-secondary-foreground">
-          Baada ya kujisajili, activate account yako kwa mtaji wa 15,000 TZS ili uanze
+          Baada ya kujisajili, activate account yako kwa mtaji wa 12,000 TZS ili uanze
           kuchati na kulipwa.
         </p>
 

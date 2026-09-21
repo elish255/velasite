@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Languages, SendHorizonal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -213,6 +213,7 @@ function buildAiReply(text: string) {
 
 function ChatPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const person = getForeigner(id);
   if (!person) throw notFound();
 
@@ -238,9 +239,14 @@ function ChatPage() {
       if (data.user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("activated")
+          .select("activated, banned, ban_reason")
           .eq("id", data.user.id)
           .maybeSingle();
+        if (profile?.banned) {
+          await supabase.auth.signOut();
+          if (active) navigate({ to: "/login", search: {} });
+          return;
+        }
         if (active) setActivated(Boolean(profile?.activated));
       }
       if (active) setCheckingAccess(false);
@@ -255,9 +261,14 @@ function ChatPage() {
       if (!data.user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("activated")
+        .select("activated, banned")
         .eq("id", data.user.id)
         .maybeSingle();
+      if (profile?.banned) {
+        await supabase.auth.signOut();
+        navigate({ to: "/login", search: {} });
+        return;
+      }
       if (profile?.activated) setActivated(true);
     }, 5000);
     return () => window.clearInterval(timer);

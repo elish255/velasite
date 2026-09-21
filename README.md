@@ -1,42 +1,47 @@
-# Connect & Earn
+# 1Vela
 
-https://1vela.site/
+1Vela is a TanStack Start + Supabase web app for chat rewards, activation payments, withdrawals and an admin dashboard.
 
-Nitengenezee website kama hii ( weka Kila kitu kuanzia rangi na functionality za buttons)
+## This update
 
-Muonekano wake uwe hivi, button ya start chat iwe inafungua chat na foreigner ataanzisha Mazungumzo. Foreigners wawe wanabadilika Kila mara na conversation ziwe realistic 
+- FimiPay server-side automatic/push activation payment integration.
+- FimiPay order-status polling and signed webhook endpoint.
+- Admin deposit approval/rejection.
+- Admin withdrawal approval/rejection with FimiPay payout.
+- Admin activate/deactivate users.
+- Admin ban/unban users.
+- Admin add/reduce user balance with a ledger.
+- Admin notification to one user or all users.
+- User notification bell and system broadcast card.
+- User dashboard redesigned around the supplied dashboard screenshots and branded as **1Vela**.
+- Withdrawal confirmation popup with **Transfer Initiated**, phone, payout amount and reference ID.
+- Banned accounts are blocked at login and protected pages.
 
+## Supabase
 
+Apply the migrations in `drizzle/migrations/` in order. The new functionality is in:
 
-User akijibu na kugusa button ya Send atakutana na pop-up window ikimuonesha Ili kuweza Kuendelea Kuchat na kulipwa 
+- `0005_admin_notifications.sql`
+- `0006_fimipay.sql`
+- `0007_ledger_and_safety.sql`
 
+## Vercel / FimiPay
 
+Copy `.env.example` into your deployment configuration. Never commit `.env` or secret FimiPay/Supabase service-role keys.
 
-Jisajili Kisha Activate account yko kwa Mtaji wa 15,000 Tzs 
+See `FIMIPAY_SETUP.md` for the exact environment-variable names and webhook URL.
 
-
-
-Jisajili Sasa hii button itampeleka user kwenye ukurasa wa kujisajili, Taarifa zake zitahifadhiwa kwenye database ambayo zitatumika wakat akitaka ku Login Tena kwenye account yake
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://velasite.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/4b5562fa-5f66-465e-b8be-afc457ed159f).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+The FimiPay API base URL and endpoint paths are intentionally configurable because the supplied FimiPay docs page is client-rendered and its endpoint details were not available to the source parser. Use the exact values from your FimiPay merchant dashboard/docs.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+```sh
+npm install
+npm run dev
+```
+
+Production build:
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+npm run build
 ```

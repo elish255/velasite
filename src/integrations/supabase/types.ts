@@ -66,6 +66,12 @@ export type Database = {
           created_at: string
           approved_at: string | null
           approved_by: string | null
+          provider: string
+          provider_reference: string | null
+          provider_status: string | null
+          provider_checkout_url: string | null
+          provider_payload: Json | null
+          paid_at: string | null
         }
         Insert: {
           id?: string
@@ -76,6 +82,12 @@ export type Database = {
           created_at?: string
           approved_at?: string | null
           approved_by?: string | null
+          provider?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          provider_checkout_url?: string | null
+          provider_payload?: Json | null
+          paid_at?: string | null
         }
         Update: {
           id?: string
@@ -86,6 +98,12 @@ export type Database = {
           created_at?: string
           approved_at?: string | null
           approved_by?: string | null
+          provider?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          provider_checkout_url?: string | null
+          provider_payload?: Json | null
+          paid_at?: string | null
         }
         Relationships: []
       }
@@ -99,6 +117,12 @@ export type Database = {
           created_at: string
           processed_at: string | null
           processed_by: string | null
+          fee: number
+          payout_amount: number | null
+          provider: string
+          provider_reference: string | null
+          provider_status: string | null
+          provider_payload: Json | null
         }
         Insert: {
           id?: string
@@ -109,6 +133,12 @@ export type Database = {
           created_at?: string
           processed_at?: string | null
           processed_by?: string | null
+          fee?: number
+          payout_amount?: number | null
+          provider?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          provider_payload?: Json | null
         }
         Update: {
           id?: string
@@ -119,6 +149,12 @@ export type Database = {
           created_at?: string
           processed_at?: string | null
           processed_by?: string | null
+          fee?: number
+          payout_amount?: number | null
+          provider?: string
+          provider_reference?: string | null
+          provider_status?: string | null
+          provider_payload?: Json | null
         }
         Relationships: []
       }
@@ -131,6 +167,8 @@ export type Database = {
           full_name: string
           id: string
           phone: string
+          banned: boolean
+          ban_reason: string | null
         }
         Insert: {
           activated?: boolean
@@ -140,6 +178,8 @@ export type Database = {
           full_name?: string
           id: string
           phone?: string
+          banned?: boolean
+          ban_reason?: string | null
         }
         Update: {
           activated?: boolean
@@ -149,6 +189,65 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string
+          banned?: boolean
+          ban_reason?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string | null
+          title: string
+          message: string
+          created_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          title: string
+          message: string
+          created_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          title?: string
+          message?: string
+          created_at?: string
+          read_at?: string | null
+        }
+        Relationships: []
+      }
+      balance_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          kind: string
+          description: string
+          reference_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          kind: string
+          description?: string
+          reference_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          kind?: string
+          description?: string
+          reference_id?: string | null
+          created_at?: string
         }
         Relationships: []
       }
@@ -185,6 +284,26 @@ export type Database = {
           p_status: string
         }
         Returns: Database["public"]["Tables"]["withdrawal_requests"]["Row"]
+      }
+      admin_adjust_balance: {
+        Args: { p_user_id: string; p_amount: number; p_reason: string }
+        Returns: number
+      }
+      admin_set_user_ban: {
+        Args: { p_user_id: string; p_banned: boolean; p_reason?: string | null }
+        Returns: Database["public"]["Tables"]["profiles"]["Row"]
+      }
+      admin_set_user_activation: {
+        Args: { p_user_id: string; p_activated: boolean }
+        Returns: Database["public"]["Tables"]["profiles"]["Row"]
+      }
+      admin_send_notification: {
+        Args: { p_user_id: string | null; p_title: string; p_message: string }
+        Returns: string
+      }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
       }
       get_public_payment_activity: {
         Args: Record<PropertyKey, never>
