@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
+const CREATE_URL = process.env.FIMIPAY_CREATE_PAYMENT_URL || "https://fimipay.com/api/v1/payment/create_order";
+const STATUS_URL = process.env.FIMIPAY_ORDER_STATUS_URL || "https://fimipay.com/api/v1/payment/order_status";
+
 export type FimipayResult = {
   ok: boolean;
   raw: unknown;
@@ -16,40 +19,6 @@ function requiredEnv(name: string) {
   return value;
 }
 
-function optionalEnv(name: string, fallback = "") {
-  return process.env[name] || fallback;
-}
-
-export function getFimipayConfig() {
-  const baseUrl = optionalEnv("FIMIPAY_API_BASE_URL", "https://fimipay.com/api/v1").replace(/\/$/, "");
-  return {
-    baseUrl,
-    apiKey: requiredEnv("FIMIPAY_API_KEY"),
-    createPaymentUrl: optionalEnv("FIMIPAY_CREATE_PAYMENT_URL", `${baseUrl}${optionalEnv("FIMIPAY_CREATE_PAYMENT_PATH", "/payment/create_order")}`),
-    orderStatusUrl: optionalEnv("FIMIPAY_ORDER_STATUS_URL", `${baseUrl}${optionalEnv("FIMIPAY_ORDER_STATUS_PATH", "/payment/order_status")}`),
-    withdrawalPath: optionalEnv("FIMIPAY_WITHDRAWAL_PATH", "/withdrawal/create"),
-    webhookSecret: optionalEnv("FIMIPAY_WEBHOOK_SECRET"),
-    webhookSignatureHeader: optionalEnv("FIMIPAY_WEBHOOK_SIGNATURE_HEADER", "x-fimipay-signature"),
-  };
-}
-
-function joinUrl(baseUrl: string, path: string) {
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${baseUrl}/${path.replace(/^\//, "")}`;
-}
-
-function parseJsonEnv(name: string): Record<string, unknown> {
-  const raw = process.env[name];
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as Record<string, unknown>;
-  } catch {
-    throw new Error(`${name} must contain valid JSON.`);
-  }
-}
-
 function firstString(...values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -58,191 +27,123 @@ function firstString(...values: unknown[]) {
   return null;
 }
 
-function nestedData(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== "object") return {};
-  const root = raw as Record<string, unknown>;
-  const data = root.data;
-  return data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : root;
+function object(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
-function normalizeStatus(raw: unknown): string | null {
-  const data = nestedData(raw);
-  const transaction = data.transaction;
-  const transactionObject = transaction && typeof transaction === "object" ? (transaction as Record<string, unknown>) : {};
-  const order = data.order;
-  const orderObject = order && typeof order === "object" ? (order as Record<string, unknown>) : {};
-  const orderStatusData = data.order_status_data;
-  const orderStatusObject = orderStatusData && typeof orderStatusData === "object" ? (orderStatusData as Record<string, unknown>) : {};
+function dataOf(raw: unknown) {
+  const root = object(raw);
+  return object(root.data);
+}
+
+export function normalizeTanzaniaPhone(input: string) {
+  const raw = input.replace(/[^0-9+]/g, "").trim();
+  if (raw.startsWith("+255") && raw.length === 13) return raw.slice(1);
+  if (raw.startsWith("255") && raw.length === 12) return raw;
+  if (raw.startsWith("0") && raw.length === 10) return `255${raw.slice(1)}`;
+  throw new Error("Weka namba sahihi ya Tanzania, mfano 0712345678.");
+}
+
+function normalizeStatus(raw: unknown) {
+  const root = object(raw);
+  const data = dataOf(raw);
+  const transaction = object(data.transaction);
+  const order = object(data.order);
   return firstString(
     data.payment_status,
+    data.order_status,
     data.status,
-    data.transaction_status,
-    transactionObject.status,
-    orderObject.status,
-    orderStatusObject.payment_status,
-    orderStatusObject.status,
+    root.payment_status,
+    root.order_status,
+    root.status,
+    transaction.status,
+    order.status,
   );
 }
 
 export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): FimipayResult {
-  const root = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
-  const data = nestedData(raw);
-  const message = firstString(root.message, data.message, root.error, data.error);
+  const root = object(raw);
+  const data = dataOf(raw);
   const reference = firstString(
-    data.reference,
-    data.transaction_reference,
     data.order_id,
-    data.order_reference,
+    data.orderId,
+    data.reference,
     data.transaction_id,
-    data.id,
+    data.transaction_reference,
+    root.order_id,
+    root.reference,
+    root.transaction_id,
+    root.id,
   );
   const checkoutUrl = firstString(
     data.checkout_url,
+    data.checkoutUrl,
     data.payment_url,
-    data.authorization_url,
-    data.redirect_url,
-    data.redirect_link,
+    data.paymentUrl,
     data.url,
-    data.link,
+    root.checkout_url,
+    root.payment_url,
+    root.url,
   );
   const status = normalizeStatus(raw);
-  const successFlag = root.success ?? root.status;
-  const normalizedStatus = String(status ?? "").toLowerCase();
-  const failureStatus = ["failed", "failure", "cancelled", "canceled", "rejected", "declined", "expired"].includes(normalizedStatus);
-  const ok = httpOk && !failureStatus && (
-    successFlag === undefined ||
-    successFlag === true ||
-    String(successFlag).toLowerCase() === "success" ||
-    String(successFlag).toLowerCase() === "successful" ||
-    String(successFlag).toLowerCase() === "pending"
-  );
+  const message = firstString(root.message, data.message, root.error);
+  const rootStatus = typeof root.status === "string" ? root.status.toLowerCase() : "";
+  const ok = httpOk && ["", "success", "successful", "pending"].includes(rootStatus);
   return { ok, raw, reference, checkoutUrl, status, message };
 }
 
-function normalizeTanzaniaPhone(input: string) {
-  const digits = input.replace(/\D/g, "");
-  if (digits.startsWith("255") && digits.length === 12) return digits;
-  if (digits.startsWith("0") && digits.length === 10) return `255${digits.slice(1)}`;
-  if (digits.length === 9 && digits.startsWith("7")) return `255${digits}`;
-  throw new Error("Weka namba sahihi ya Tanzania, mfano 0712 345 678.");
-}
-
-async function fimipayFetch(url: string, init: RequestInit = {}) {
-  const config = getFimipayConfig();
-  const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
-  headers.set("Accept", "application/json");
-  headers.set("X-API-Key", config.apiKey);
-  headers.set("Authorization", `Bearer ${config.apiKey}`);
-
-  const response = await fetch(url, { ...init, headers });
-  const text = await response.text();
-  let json: unknown = text;
+async function fimipayFetch(url: string, body: Record<string, unknown>, timeoutMs: number) {
+  const apiKey = requiredEnv("FIMIPAY_API_KEY");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    json = text ? JSON.parse(text) : {};
-  } catch {
-    // Keep text for the error message.
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "FimiPay-SDK/1.0",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let json: unknown = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text }; }
+    return { response, json };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Ombi la malipo limechelewa. Jaribu tena.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return { response, json };
 }
 
 export async function createFimipayPayment(input: {
-  requestId: string;
   amount: number;
   phone: string;
   fullName: string;
   email: string;
-  callbackUrl: string;
 }) {
-  const config = getFimipayConfig();
   const phone = normalizeTanzaniaPhone(input.phone);
-  const [firstName = "1Vela", ...lastParts] = input.fullName.trim().split(/\s+/).filter(Boolean);
-  const lastName = lastParts.join(" ");
   const payload = {
     buyer_email: input.email,
     buyer_name: input.fullName || "1Vela User",
     buyer_phone: phone,
     amount: input.amount,
-    currency: optionalEnv("FIMIPAY_CURRENCY", "TZS"),
-    order_id: input.requestId,
-    reference: input.requestId,
+    currency: process.env.FIMIPAY_CURRENCY || "TZS",
     payment_method: "mobile",
-    payment_type: "mobile_money",
-    first_name: firstName,
-    last_name: lastName,
-    phone,
-    customer_phone: phone,
-    customer_name: input.fullName || "1Vela User",
-    callback_url: input.callbackUrl,
-    return_url: input.callbackUrl,
-    description: optionalEnv("FIMIPAY_PAYMENT_DESCRIPTION", "1Vela activation payment"),
-    ...parseJsonEnv("FIMIPAY_CREATE_PAYMENT_EXTRA_JSON"),
   };
-  const result = await fimipayFetch(config.createPaymentUrl, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const result = await fimipayFetch(CREATE_URL, payload, 20000);
   return normalizeFimipayResponse(result.json, result.response.ok);
 }
 
-export async function getFimipayOrderStatus(reference: string) {
-  const config = getFimipayConfig();
-  const result = await fimipayFetch(config.orderStatusUrl, {
-    method: "POST",
-    body: JSON.stringify({ order_id: reference }),
-  });
+export async function getFimipayOrderStatus(orderId: string) {
+  const result = await fimipayFetch(STATUS_URL, { order_id: orderId }, 12000);
   return normalizeFimipayResponse(result.json, result.response.ok);
-}
-
-export async function createFimipayWithdrawal(input: {
-  requestId: string;
-  amount: number;
-  payoutAmount: number;
-  fee: number;
-  phone: string;
-  fullName: string;
-  email: string;
-}) {
-  const config = getFimipayConfig();
-  const phone = normalizeTanzaniaPhone(input.phone);
-  const payload = {
-    amount: input.payoutAmount,
-    requested_amount: input.amount,
-    payout_amount: input.payoutAmount,
-    fee: input.fee,
-    currency: optionalEnv("FIMIPAY_CURRENCY", "TZS"),
-    phone,
-    customer_phone: phone,
-    customer_name: input.fullName,
-    email: input.email,
-    order_id: input.requestId,
-    reference: input.requestId,
-    description: optionalEnv("FIMIPAY_WITHDRAWAL_DESCRIPTION", "1Vela withdrawal"),
-    ...parseJsonEnv("FIMIPAY_WITHDRAWAL_EXTRA_JSON"),
-  };
-  const result = await fimipayFetch(joinUrl(config.baseUrl, config.withdrawalPath), {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return normalizeFimipayResponse(result.json, result.response.ok);
-}
-
-export async function verifyFimipayWebhook(request: Request, rawBody: string) {
-  const config = getFimipayConfig();
-  if (!config.webhookSecret) return false;
-  const signature = request.headers.get(config.webhookSignatureHeader);
-  if (!signature) return false;
-  const normalizedSignature = signature.replace(/^sha256=/i, "").trim().toLowerCase();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(config.webhookSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signatureBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody)));
-  const digest = Array.from(signatureBytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return digest === normalizedSignature;
 }
 
 export function createUserSupabaseClient(accessToken: string) {
@@ -257,4 +158,53 @@ export function createUserSupabaseClient(accessToken: string) {
 export function getBearerToken(request: Request) {
   const value = request.headers.get("authorization") ?? "";
   return value.startsWith("Bearer ") ? value.slice(7).trim() : "";
+}
+
+
+export async function createFimipayWithdrawal(input: {
+  requestId: string;
+  amount: number;
+  payoutAmount: number;
+  fee: number;
+  phone: string;
+  fullName: string;
+  email: string;
+}) {
+  const apiKey = requiredEnv("FIMIPAY_API_KEY");
+  const url = process.env.FIMIPAY_WITHDRAWAL_URL || process.env.FIMIPAY_WITHDRAWAL_PATH;
+  if (!url) throw new Error("FIMIPAY_WITHDRAWAL_URL haijawekwa kwenye Vercel.");
+  const target = /^https?:\/\//i.test(url)
+    ? url
+    : `${(process.env.FIMIPAY_API_BASE_URL || "").replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+  const phone = normalizeTanzaniaPhone(input.phone);
+  const payload = {
+    amount: input.payoutAmount,
+    requested_amount: input.amount,
+    payout_amount: input.payoutAmount,
+    fee: input.fee,
+    currency: process.env.FIMIPAY_CURRENCY || "TZS",
+    phone,
+    customer_phone: phone,
+    customer_name: input.fullName,
+    email: input.email,
+    order_id: input.requestId,
+    reference: input.requestId,
+    description: process.env.FIMIPAY_WITHDRAWAL_DESCRIPTION || "1Vela withdrawal",
+  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(target, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "FimiPay-SDK/1.0", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let json: unknown = {};
+    try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text }; }
+    return normalizeFimipayResponse(json, response.ok);
+  } finally {
+    clearTimeout(timeout);
+  }
 }

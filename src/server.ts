@@ -3,7 +3,6 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import {
-  handleUnifiedFimipayApi,
   handleFimipayPayment,
   handleFimipayPaymentStatus,
   handleFimipayWebhook,
@@ -55,9 +54,6 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
-      if (url.pathname === "/api/fimipay" && request.method === "POST") {
-        return await handleUnifiedFimipayApi(request);
-      }
       if (url.pathname === "/api/fimipay/payment" && request.method === "POST") {
         return await handleFimipayPayment(request);
       }

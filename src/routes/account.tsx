@@ -113,7 +113,7 @@ function AccountPage() {
     const handler = () => void loadDashboard();
     window.addEventListener("vela:balance-updated", handler);
     return () => window.removeEventListener("vela:balance-updated", handler);
-  }, []);
+  }, [navigate]);
 
   const balance = Number(profile?.balance ?? 0);
   const netIncome = balance + withdrawn;
@@ -249,7 +249,7 @@ function AccountPage() {
         {!profile?.activated && (
           <section className="mt-7 rounded-[28px] border border-amber-200 bg-amber-50 p-6">
             <p className="font-extrabold text-amber-900">Account bado haija-activate</p>
-            <p className="mt-1 text-sm text-amber-800">Chagua njia ya malipo kulipa activation fee ili kuendelea.</p>
+            <p className="mt-1 text-sm text-amber-800">Lipa activation fee kwa Automatic Push au Lipa Namba ili kuendelea.</p>
             <Link to="/payment" className="mt-4 inline-flex rounded-2xl bg-amber-900 px-5 py-3 font-extrabold text-white">Activate Account</Link>
           </section>
         )}

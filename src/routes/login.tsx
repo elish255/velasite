@@ -44,15 +44,16 @@ function LoginPage() {
       setError(signInError.message);
       return;
     }
-    const { data: profile } = await supabase.from("profiles").select("banned, ban_reason, activated").eq("id", signInData.user.id).maybeSingle();
+    const { data: profile } = await supabase.from("profiles").select("banned, ban_reason").eq("id", signInData.user.id).maybeSingle();
     if (profile?.banned) {
       await supabase.auth.signOut();
       setLoading(false);
       setError(profile.ban_reason || "Akaunti yako imezuiwa na admin.");
       return;
     }
+    const { data: activationProfile } = await supabase.from("profiles").select("activated").eq("id", signInData.user.id).maybeSingle();
     setLoading(false);
-    navigate({ to: profile?.activated ? "/account" : "/payment" });
+    navigate({ to: activationProfile?.activated ? "/account" : "/payment" });
   }
 
   return (
@@ -72,7 +73,7 @@ function LoginPage() {
 
         {registered && (
           <p className="mt-5 rounded-2xl bg-brand-tint p-4 text-sm font-semibold text-secondary-foreground">
-            Usajili umekamilika. Ingia kisha utaelekezwa moja kwa moja kwenye malipo ya activation.
+            Usajili umekamilika. Sasa ingia kwenye akaunti yako.
           </p>
         )}
 
