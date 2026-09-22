@@ -53,6 +53,7 @@ function LoginPage() {
     }
     const { data: activationProfile } = await supabase.from("profiles").select("activated").eq("id", signInData.user.id).maybeSingle();
     setLoading(false);
+    window.localStorage.setItem("vela:has-account", "true");
     navigate({ to: activationProfile?.activated ? "/account" : "/payment" });
   }
 

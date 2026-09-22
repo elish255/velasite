@@ -43,6 +43,26 @@ function nowTime() {
   }).format(new Date());
 }
 
+function getGuestChatKey(foreignerId: string) {
+  return `vela:guest-chat:${foreignerId}`;
+}
+
+function getGuestChatSession(foreignerId: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getGuestChatKey(foreignerId));
+    if (!raw) return null;
+    return JSON.parse(raw) as { sessionId: string; messages: Msg[]; ended: boolean };
+  } catch {
+    return null;
+  }
+}
+
+function saveGuestChatSession(foreignerId: string, session: { sessionId: string; messages: Msg[]; ended: boolean }) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(getGuestChatKey(foreignerId), JSON.stringify(session));
+}
+
 function translateToSwahili(text: string) {
   // Exact translations for every generated chat reply keep the translation
   // natural and complete, including mixed English/Kiswahili messages.
@@ -264,6 +284,19 @@ function ChatPage() {
             setTyping(false);
           }
         }
+      } else {
+        // Guests can see the foreigner's opening message before registration.
+        // The first user reply is gated by the registration/activation dialog.
+        const guest = getGuestChatSession(person.id);
+        if (guest) {
+          sessionIdRef.current = guest.sessionId;
+          messagesRef.current = guest.messages;
+          setMessages(guest.messages);
+          messageCountRef.current = guest.messages.length;
+          setMessageCount(guest.messages.length);
+          setSessionEnded(guest.ended);
+          setTyping(false);
+        }
       }
       if (active) setCheckingAccess(false);
     })();
@@ -292,22 +325,26 @@ function ChatPage() {
 
   // Start a fresh chat only when the user has no saved session for this foreigner.
   useEffect(() => {
-    if (!userId) return;
-    const saved = getChatSession(userId, person.id);
-    if (saved) return;
-    const timer = window.setTimeout(() => {
-      const first = person.opening[0] ?? "Hi! How are you? 😊";
-      const initial: Msg = { from: "them", text: first, swahili: translateToSwahili(first), time: nowTime() };
-      const session = { sessionId: sessionIdRef.current, foreignerId: person.id, messages: [initial], ended: false, updatedAt: new Date().toISOString() };
-      messagesRef.current = [initial];
-      setMessages([initial]);
-      messageCountRef.current = 1;
-      setMessageCount(1);
-      setTyping(false);
-      saveChatSession(userId, session);
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [userId, person.id]);
+    if (checkingAccess) return;
+    if (userId) {
+      if (getChatSession(userId, person.id)) return;
+    } else if (getGuestChatSession(person.id)) {
+      return;
+    }
+
+    // The foreigner must send the first message immediately so the user can
+    // read it and reply. Guests see this message before registration.
+    const first = person.opening[0] ?? "Hi! How are you? 😊";
+    const initial: Msg = { from: "them", text: first, swahili: translateToSwahili(first), time: nowTime() };
+    const session = { sessionId: sessionIdRef.current, foreignerId: person.id, messages: [initial], ended: false, updatedAt: new Date().toISOString() };
+    messagesRef.current = [initial];
+    setMessages([initial]);
+    messageCountRef.current = 1;
+    setMessageCount(1);
+    setTyping(false);
+    if (userId) saveChatSession(userId, session);
+    else saveGuestChatSession(person.id, { sessionId: session.sessionId, messages: [initial], ended: false });
+  }, [userId, person.id, checkingAccess]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -343,14 +380,17 @@ function ChatPage() {
   }
 
   function persistMessages(next: Msg[], ended = false) {
-    if (!userId) return;
-    saveChatSession(userId, {
-      sessionId: sessionIdRef.current,
-      foreignerId: person.id,
-      messages: next as StoredChatMessage[],
-      ended,
-      updatedAt: new Date().toISOString(),
-    });
+    if (userId) {
+      saveChatSession(userId, {
+        sessionId: sessionIdRef.current,
+        foreignerId: person.id,
+        messages: next as StoredChatMessage[],
+        ended,
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+    saveGuestChatSession(person.id, { sessionId: sessionIdRef.current, messages: next, ended });
   }
 
   function handleSend(e: React.FormEvent) {
@@ -379,19 +419,25 @@ function ChatPage() {
     persistMessages(nextMessages);
     setTyping(true);
     window.setTimeout(() => {
-      const reply = buildAiReply(text);
-      const incomingCount = messageCountRef.current + 1;
-      const incoming: Msg = { from: "them", text: reply, swahili: translateToSwahili(reply), time: nowTime() };
-      const withReply = [...nextMessages, incoming];
-      messageCountRef.current = incomingCount;
-      setMessages(withReply);
-      setMessageCount(incomingCount);
-      messagesRef.current = withReply;
-      if (incomingCount >= 20) {
-        persistMessages(withReply, true);
-        void finishSession();
-      } else {
-        persistMessages(withReply);
+      try {
+        const reply = buildAiReply(text) || "That is interesting! Tell me more, rafiki. 😊";
+        const incomingCount = messageCountRef.current + 1;
+        const incoming: Msg = { from: "them", text: reply, swahili: translateToSwahili(reply), time: nowTime() };
+        const withReply = [...nextMessages, incoming];
+        messageCountRef.current = incomingCount;
+        setMessages(withReply);
+        setMessageCount(incomingCount);
+        messagesRef.current = withReply;
+        if (incomingCount >= 20) {
+          persistMessages(withReply, true);
+          void finishSession();
+        } else {
+          persistMessages(withReply);
+        }
+      } catch (error) {
+        console.error("Foreigner reply failed", error);
+        toast.error("Foreigner hajatumia ujumbe. Jaribu kutuma tena.");
+      } finally {
         setTyping(false);
       }
     }, 1000 + Math.floor(Math.random() * 1000));
@@ -402,7 +448,7 @@ function ChatPage() {
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex min-h-[76px] max-w-3xl items-center gap-3 px-4 py-3">
           <Link
-            to="/"
+            to={userId ? "/account" : "/"}
             aria-label="Rudi"
             className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-tint text-foreground transition hover:bg-brand-soft"
           >
@@ -433,7 +479,6 @@ function ChatPage() {
         <div className="mb-5 rounded-3xl bg-primary px-5 py-5 text-center text-primary-foreground shadow-brand">
           <p className="text-sm font-medium opacity-90">You are chatting with {person.name} for {person.minutes} minutes.</p>
           <p className="mt-1 text-lg font-extrabold">Chat session reward: TZS {person.priceTzs.toLocaleString("en-US")}</p>
-          <p className="mt-1 text-xs opacity-80">AI chat partner</p>
         </div>
 
         <div className="flex-1 space-y-4 pb-4">

@@ -1,17 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { Eye, EyeOff, Menu, User, Wallet, X } from "lucide-react";
+import { Menu, User, Wallet, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const [showBalance, setShowBalance] = useState(false);
   const [live, setLive] = useState(2551);
   const [signedIn, setSignedIn] = useState(false);
+  const [hasAccount, setHasAccount] = useState(false);
   const [balance, setBalance] = useState(0);
 
   useEffect(() => {
+    setHasAccount(window.localStorage.getItem("vela:has-account") === "true");
     const timer = setInterval(() => {
       setLive((v) => Math.max(2100, v + Math.round((Math.random() - 0.45) * 14)));
     }, 4000);
@@ -112,6 +113,12 @@ export function SiteHeader() {
             <span className="text-sm opacity-80">live</span>
           </div>
           <Link
+            to={signedIn ? "/account" : (hasAccount ? "/login" : "/register")}
+            className="rounded-full border border-header-foreground/25 bg-header-foreground/10 px-5 py-3 font-bold text-header-foreground"
+          >
+            Dashboard
+          </Link>
+          <Link
             to={signedIn ? "/withdrawal" : "/login"}
             className="brand-gradient flex items-center gap-2 rounded-full px-6 py-3 font-bold text-brand-foreground shadow-brand"
           >
@@ -120,21 +127,16 @@ export function SiteHeader() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowBalance((v) => !v)}
-          className="mt-3 flex w-full max-w-xs items-center gap-3 rounded-2xl bg-brand-dark/60 px-5 py-4 text-left"
-        >
-          {showBalance ? <EyeOff className="size-5 opacity-80" /> : <Eye className="size-5 opacity-80" />}
+        <div className="mt-3 flex w-full max-w-xs items-center rounded-2xl bg-brand-dark/60 px-5 py-4">
           <span>
             <span className="block text-[11px] font-bold uppercase tracking-widest opacity-70">
               Current balance
             </span>
             <span className="mt-1 block font-bold text-gold">
-              {showBalance ? `TZS ${balance.toLocaleString("en-US")}` : "●●●●●"}
+              TZS {balance.toLocaleString("en-US")}
             </span>
           </span>
-        </button>
+        </div>
       </div>
     </header>
   );

@@ -51,6 +51,7 @@ function RegisterPage() {
       setError(signUpError.message);
       return;
     }
+    window.localStorage.setItem("vela:has-account", "true");
     if (data.session) {
       navigate({ to: "/payment" });
     } else {

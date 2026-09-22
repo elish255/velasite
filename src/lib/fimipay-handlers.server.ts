@@ -157,24 +157,45 @@ export async function handleFimipayWithdrawal(request: Request) {
       email: authUser.user?.email ?? "",
     });
 
-    await supabaseAdmin.from("withdrawal_requests").update({
-      status: isSuccessStatus(result.status) ? "processing" : withdrawal.status,
+    if (!result.ok) {
+      await supabaseAdmin.from("withdrawal_requests").update({
+        provider: "fimipay",
+        provider_reference: result.reference,
+        provider_status: result.status,
+        provider_payload: result.raw as never,
+      }).eq("id", withdrawal.id);
+      return json({ error: result.message || "FimiPay payout failed", providerStatus: result.status }, 502);
+    }
+
+    const providerPatch = {
       provider: "fimipay",
       provider_reference: result.reference,
       provider_status: result.status,
       provider_payload: result.raw as never,
-    }).eq("id", withdrawal.id);
-
-    if (!result.ok) {
-      return json({ error: result.message || "FimiPay payout failed", providerStatus: result.status }, 502);
-    }
+    };
 
     if (isSuccessStatus(result.status)) {
-      const { error: reviewError } = await auth.supabase.rpc("review_withdrawal", {
-        p_request_id: withdrawal.id,
-        p_status: "paid",
+      // The withdrawal request has already been debited when it was created.
+      // Mark it paid directly instead of calling review_withdrawal after first
+      // changing it to processing (which made the old RPC reject the request).
+      const { error: paidError } = await supabaseAdmin.from("withdrawal_requests").update({
+        ...providerPatch,
+        status: "paid",
+        processed_at: new Date().toISOString(),
+        processed_by: auth.userId,
+      }).eq("id", withdrawal.id).eq("status", withdrawal.status);
+      if (paidError) return json({ error: paidError.message }, 500);
+      await supabaseAdmin.from("notifications").insert({
+        user_id: withdrawal.user_id,
+        title: "Withdrawal imetumwa",
+        message: `Payout ya TZS ${Number(withdrawal.payout_amount ?? withdrawal.amount).toLocaleString("en-US")} imetumwa kwenye namba yako.`,
       });
-      if (reviewError) return json({ error: reviewError.message }, 500);
+    } else {
+      const { error: processingError } = await supabaseAdmin.from("withdrawal_requests").update({
+        ...providerPatch,
+        status: "processing",
+      }).eq("id", withdrawal.id).eq("status", withdrawal.status);
+      if (processingError) return json({ error: processingError.message }, 500);
     }
 
     return json({
