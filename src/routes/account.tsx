@@ -98,6 +98,15 @@ function AccountPage() {
 
     setEmail(user.email ?? "");
     setProfile(nextProfile);
+
+    // Keep unactivated users on the activation/payment flow instead of
+    // relying on a dashboard button they may not notice. Activated users
+    // continue to the normal dashboard.
+    if (nextProfile && !nextProfile.activated) {
+      navigate({ to: "/payment" });
+      return;
+    }
+
     setNotifications((notificationRows as Notification[]) ?? []);
     setWithdrawn((withdrawalRows ?? []).reduce((sum, item) => sum + Number(item.amount ?? 0), 0));
     setBonus((rewardRows ?? []).reduce((sum, item) => sum + Number(item.amount ?? 0), 0));

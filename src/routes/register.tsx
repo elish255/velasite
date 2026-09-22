@@ -67,7 +67,9 @@ function RegisterPage() {
       return;
     }
     if (data.session) {
-      navigate({ to: "/account" });
+      // New accounts must activate before entering the dashboard.
+      // Send the user straight to the payment page after registration.
+      navigate({ to: "/payment" });
     } else {
       navigate({ to: "/login", search: { registered: true } });
     }
