@@ -209,10 +209,10 @@ function ManualPayment({ paidPrompt, firstPopup, phone, setPhone, saving, onPaid
     </div>
 
     <div className="mt-5 space-y-3">
-      <PaymentMethod logo="https://brandlogos.net/wp-content/uploads/2025/04/vodacom-logo_brandlogos.net_4uzfe.png" name="Vodacom M-Pesa" steps={["*150*00#", "Lipa kwa M-PESA", `Lipa kwa namba ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
-      <PaymentMethod logo="https://www.uminolan.co.tz/assets/images/supa-agent/mixx-by-yas-seeklogo2.png" name="Mixx by Yas" steps={["*150*01#", "Lipa kwa simu", `Chagua namba ya malipo ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
-      <PaymentMethod logo="https://nikulipe.com/wp-content/uploads/2022/09/Airtel_logo_PNG1.png" name="Airtel Money" steps={["*150*60#", "Lipia Bili", `Ingiza namba ya malipo ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
-      <PaymentMethod logo="https://halopesa.co.tz/images/applications-system.png" name="Halopesa" steps={["*150*88#", "Lipia Bidhaa", `Weka namba ya malipo ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
+      <PaymentMethod logo="https://brandlogos.net/wp-content/uploads/2025/04/vodacom-logo_brandlogos.net_4uzfe.png" name="Vodacom M-Pesa" steps={["*150*00#", "Lipa kwa M-PESA",`Lipa Kwa Simu- Halopesa`, `Weka Lipa namba ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
+      <PaymentMethod logo="https://www.uminolan.co.tz/assets/images/supa-agent/mixx-by-yas-seeklogo2.png" name="Mixx by Yas" steps={["*150*01#", "Lipa kwa simu",`Kwenda Mitandao mingine- Halopesa`, `Weka Lipa namba ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
+      <PaymentMethod logo="https://nikulipe.com/wp-content/uploads/2022/09/Airtel_logo_PNG1.png" name="Airtel Money" steps={["*150*60#", "Lipia Bili", `Lipa kwa Simu(Mitandao Yote)-Halopesa`, `Ingiza namba ya malipo ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
+      <PaymentMethod logo="https://halopesa.co.tz/images/applications-system.png" name="Halopesa" steps={["*150*88#", "Lipia Bidhaa",`Halopesa`, `Weka namba ya malipo ${LIPA_NAMBA}`, `Weka TZS ${PRICE.toLocaleString()}`]} />
     </div>
 
     {paidPrompt && !firstPopup && <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4"><p className="font-extrabold">Umeshalipia?</p><p className="mt-1 text-sm text-muted-foreground">Weka namba ya simu uliyotumia kufanya malipo.</p><input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="0712345678" className="mt-3 w-full rounded-xl border border-input bg-background px-3 py-3 outline-none" /></div>}
