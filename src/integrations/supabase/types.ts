@@ -271,10 +271,6 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
       }
-      activate_automatic_payment: {
-        Args: { p_request_id: string }
-        Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
-      }
       request_withdrawal: {
         Args: {
           p_amount: number

@@ -30,6 +30,8 @@ type ApiResponse = {
   redirect?: string;
 };
 
+const failureStatuses = new Set(["failed", "failure", "cancelled", "canceled", "rejected", "declined", "expired"]);
+
 export const Route = createFileRoute("/payment")({
   ssr: false,
   head: () => ({
@@ -51,11 +53,15 @@ function PaymentPage() {
 
   async function loadPaymentState() {
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { navigate({ to: "/login", search: {} }); return; }
+    if (!auth.user) {
+      navigate({ to: "/login", search: {} });
+      return;
+    }
 
     const [{ data: profile }, { data: latest }] = await Promise.all([
       supabase.from("profiles").select("phone, activated, banned").eq("id", auth.user.id).maybeSingle(),
-      supabase.from("payment_requests")
+      supabase
+        .from("payment_requests")
         .select("id, user_id, phone, amount, status, provider, provider_reference, provider_status, provider_checkout_url, paid_at")
         .eq("user_id", auth.user.id)
         .order("created_at", { ascending: false })
@@ -63,16 +69,26 @@ function PaymentPage() {
         .maybeSingle(),
     ]);
 
-    if (profile?.banned) { await supabase.auth.signOut(); navigate({ to: "/login", search: {} }); return; }
-    if (profile?.activated) { navigate({ to: "/account" }); return; }
+    if (profile?.banned) {
+      await supabase.auth.signOut();
+      navigate({ to: "/login", search: {} });
+      return;
+    }
+    if (profile?.activated) {
+      navigate({ to: "/account" });
+      return;
+    }
     if (profile?.phone) setPhone(profile.phone);
+
     const latestPayment = (latest as PaymentRequest | null) ?? null;
     setRequest(latestPayment);
     if (latestPayment?.provider === "manual") setMethod("manual");
     setLoading(false);
   }
 
-  useEffect(() => { void loadPaymentState(); }, []);
+  useEffect(() => {
+    void loadPaymentState();
+  }, []);
 
   useEffect(() => {
     if (!request?.id || request.status !== "pending") return;
@@ -87,7 +103,7 @@ function PaymentPage() {
           body: JSON.stringify({ action: "status", paymentId: request.id }),
         });
         const data = await response.json().catch(() => ({} as ApiResponse)) as ApiResponse;
-        if (response.ok && data.request) setRequest(data.request);
+        if (data.request) setRequest(data.request);
         if (data.activated || data.request?.status === "approved") {
           toast.success("Malipo yamepokelewa. Account yako imewashwa.");
           navigate({ to: "/account" });
@@ -98,7 +114,8 @@ function PaymentPage() {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
       const [{ data: latest }, { data: profile }] = await Promise.all([
-        supabase.from("payment_requests")
+        supabase
+          .from("payment_requests")
           .select("id, user_id, phone, amount, status, provider, provider_reference, provider_status, provider_checkout_url, paid_at")
           .eq("id", request.id)
           .eq("user_id", auth.user.id)
@@ -117,7 +134,10 @@ function PaymentPage() {
 
   async function callApi(action: "create" | "manual") {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) { navigate({ to: "/login", search: {} }); return null; }
+    if (!token) {
+      navigate({ to: "/login", search: {} });
+      return null;
+    }
     const response = await fetch("/api/fimipay", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -130,22 +150,33 @@ function PaymentPage() {
 
   async function startAutomaticPayment() {
     const cleanedPhone = phone.trim();
-    if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(cleanedPhone)) { toast.error("Weka namba sahihi ya simu."); return; }
+    if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(cleanedPhone)) {
+      toast.error("Weka namba sahihi ya simu.");
+      return;
+    }
     setSubmitting(true);
     try {
       const data = await callApi("create");
       if (!data) return;
       if (data.request) setRequest(data.request);
+      if (data.activated) {
+        navigate({ to: "/account" });
+        return;
+      }
       toast.success(data.message || "Ombi la malipo limetumwa. Angalia simu yako.");
-      if (data.activated) navigate({ to: "/account" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ombi la malipo limeshindikana.");
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function claimManualPayment() {
     const cleanedPhone = phone.trim();
-    if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(cleanedPhone)) { toast.error("Weka namba uliyotumia kulipia."); return; }
+    if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(cleanedPhone)) {
+      toast.error("Weka namba uliyotumia kulipia.");
+      return;
+    }
     setSubmitting(true);
     try {
       const data = await callApi("manual");
@@ -154,23 +185,32 @@ function PaymentPage() {
       toast.success(data.message || "Taarifa imetumwa kwa admin.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Taarifa haikutumwa.");
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function copyLipaNumber() {
-    try { await navigator.clipboard.writeText(LIPA_NUMBER); toast.success("LIPA NAMBA imekopiwa."); } catch { toast.error("Imeshindikana ku-copy namba."); }
+    try {
+      await navigator.clipboard.writeText(LIPA_NUMBER);
+      toast.success("LIPA NAMBA imekopiwa.");
+    } catch {
+      toast.error("Imeshindikana ku-copy namba.");
+    }
   }
 
   if (loading) return <div className="grid min-h-screen place-items-center bg-background"><Loader2 className="size-7 animate-spin text-primary" /></div>;
 
+  const providerStatus = (request?.provider_status ?? "").toLowerCase();
   const isManualPending = request?.provider === "manual" && request.status === "pending";
-  const isAutomaticPending = request?.provider === "automatic" && request.status === "pending";
+  const isAutomaticPending = request?.provider === "automatic" && request.status === "pending" && !failureStatuses.has(providerStatus);
+  const automaticFailed = request?.provider === "automatic" && failureStatuses.has(providerStatus);
 
   return (
     <div className="min-h-screen bg-background pb-10">
       <header className="header-surface px-5 py-5 text-header-foreground">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Link to="/account" aria-label="Rudi" className="grid size-10 place-items-center rounded-full bg-brand-dark/50"><ArrowLeft className="size-5" /></Link>
+          <Link to="/" aria-label="Rudi" className="grid size-10 place-items-center rounded-full bg-brand-dark/50"><ArrowLeft className="size-5" /></Link>
           <img src="/1vela-logo.jpg" alt="1Vela" className="size-10 rounded-full bg-white object-contain" />
           <div><p className="font-extrabold">1Vela</p><p className="text-xs opacity-80">Activation Payment</p></div>
         </div>
@@ -194,9 +234,10 @@ function PaymentPage() {
             <label className="mt-6 grid gap-2"><span className="text-sm font-bold">Namba ya simu</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" className="input-base" disabled={submitting || isAutomaticPending || isManualPending} /></label>
             <button type="button" onClick={() => void startAutomaticPayment()} disabled={submitting || isAutomaticPending || isManualPending} className="brand-gradient mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-extrabold text-brand-foreground shadow-brand disabled:cursor-not-allowed disabled:opacity-60">
               {submitting ? <Loader2 className="size-5 animate-spin" /> : <Smartphone className="size-5" />}
-              {isAutomaticPending ? "Ombi limetumwa / Inasubiri" : "Lipa Sasa"}
+              {isAutomaticPending ? "Ombi limetumwa / Inasubiri" : automaticFailed ? "Jaribu Tena" : "Lipa Sasa"}
             </button>
-            <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">Baada ya malipo kuthibitishwa, account itafunguka moja kwa moja bila kusubiri admin.</p>
+            {automaticFailed && <p className="mt-4 rounded-2xl bg-red-50 p-4 text-center text-sm font-bold text-red-700">Ombi la malipo halikukamilika. Hakuna fedha iliyothibitishwa. Unaweza kujaribu tena.</p>}
+            <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">Baada ya malipo kuthibitishwa, account itafunguka moja kwa moja.</p>
           </section>
         ) : (
           <section className="mt-5 rounded-3xl border border-border bg-card p-6 shadow-card">
@@ -218,7 +259,7 @@ function PaymentPage() {
 
         {request && (
           <section className="mt-5 rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-muted-foreground">Payment status</p><p className="mt-1 font-display text-2xl font-extrabold">{request.status === "approved" ? "Approved" : isManualPending ? "Inasubiri uthibitisho" : "Inasubiri"}</p></div><CheckCircle2 className={request.status === "approved" ? "size-8 text-primary" : "size-8 text-slate-300"} /></div>
+            <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-muted-foreground">Payment status</p><p className="mt-1 font-display text-2xl font-extrabold">{request.status === "approved" ? "Approved" : isManualPending ? "Inasubiri uthibitisho" : automaticFailed ? "Imeshindikana" : "Inasubiri"}</p></div><CheckCircle2 className={request.status === "approved" ? "size-8 text-primary" : "size-8 text-slate-300"} /></div>
             <div className="mt-5 grid gap-2 text-sm"><InfoRow label="Amount" value={`TZS ${Number(request.amount).toLocaleString("en-US")}`} /><InfoRow label="Phone" value={request.phone} /><InfoRow label="Method" value={request.provider === "manual" ? "LIPA NAMBA" : "Automatic Payment"} /></div>
             {isManualPending && <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800">Taarifa yako imefika kwa admin. Subiri uthibitisho wa muamala.</div>}
             {request.status === "approved" && <button type="button" onClick={() => navigate({ to: "/account" })} className="mt-5 flex w-full items-center justify-center rounded-2xl bg-brand-tint px-5 py-3 font-extrabold text-primary">Endelea kwenye Dashboard</button>}

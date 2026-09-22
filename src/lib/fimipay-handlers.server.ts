@@ -11,6 +11,11 @@ import { getAuthenticatedRequestUser } from "./server-auth";
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
+function customerMessage(message: string | null | undefined, fallback: string) {
+  const clean = message?.replace(/fimipay/gi, "malipo").trim();
+  return clean || fallback;
+}
+
 function isSuccessStatus(status: string | null) {
   return ["success", "successful", "paid", "completed", "complete", "approved", "successed"].includes((status ?? "").toLowerCase());
 }
@@ -96,7 +101,11 @@ export async function handleFimipayPayment(request: Request, parsedBody?: { phon
     .maybeSingle();
 
   if (existing) {
-    return json({ request: existing, message: "Tayari una payment inayosubiri." });
+    if (isFailureStatus(existing.provider_status)) {
+      await supabaseAdmin.from("payment_requests").update({ status: "rejected" }).eq("id", existing.id).eq("status", "pending");
+    } else {
+      return json({ request: existing, message: "Tayari una ombi la malipo linalosubiri." });
+    }
   }
 
   const amount = Number(process.env["VITE_ACTIVATION_FEE"] || process.env["ACTIVATION_FEE"] || 12000);
@@ -124,12 +133,13 @@ export async function handleFimipayPayment(request: Request, parsedBody?: { phon
     await updatePaymentProvider(created.id, result);
 
     if (!result.ok) {
-      return json({ error: result.message || "FimiPay payment initialization failed", requestId: created.id }, 502);
+      await supabaseAdmin.from("payment_requests").update({ status: "rejected" }).eq("id", created.id).eq("status", "pending");
+      return json({ error: customerMessage(result.message, "Ombi la malipo limeshindikana. Hakuna malipo yaliyothibitishwa."), requestId: created.id }, 502);
     }
 
     const { data: refreshed } = await supabaseAdmin
       .from("payment_requests")
-      .select(paymentSelect())
+      .select("id, phone, amount, status, provider_reference, provider_status, provider_checkout_url")
       .eq("id", created.id)
       .maybeSingle();
 
@@ -142,7 +152,7 @@ export async function handleFimipayPayment(request: Request, parsedBody?: { phon
     });
   } catch (error) {
     await supabaseAdmin.from("payment_requests").delete().eq("id", created.id).eq("status", "pending");
-    return json({ error: error instanceof Error ? error.message : "FimiPay is not configured." }, 500);
+    return json({ error: error instanceof Error ? error.message : "Huduma ya malipo haipo tayari kwa sasa." }, 500);
   }
 }
 
@@ -179,7 +189,7 @@ export async function handleFimipayPaymentStatus(request: Request, parsedBody?: 
     const activated = isSuccessStatus(result.status);
     return json({ payment: refreshed ?? payment, providerStatus: result.status, activated, redirect: activated ? "/account" : undefined });
   } catch (error) {
-    return json({ payment, activated: false, warning: error instanceof Error ? error.message : "Unable to check payment status." });
+    return json({ payment, activated: false, warning: error instanceof Error ? error.message : "Imeshindikana kuangalia hali ya malipo." });
   }
 }
 
@@ -278,7 +288,7 @@ export async function handleFimipayWithdrawal(request: Request) {
     }).eq("id", withdrawal.id);
 
     if (!result.ok) {
-      return json({ error: result.message || "FimiPay payout failed", providerStatus: result.status }, 502);
+      return json({ error: customerMessage(result.message, "Ombi la withdrawal limeshindikana."), providerStatus: result.status }, 502);
     }
 
     if (isSuccessStatus(result.status)) {
@@ -296,7 +306,7 @@ export async function handleFimipayWithdrawal(request: Request) {
       payoutAmount: Number(withdrawal.payout_amount ?? withdrawal.amount),
     });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "FimiPay is not configured." }, 500);
+    return json({ error: error instanceof Error ? error.message : "Huduma ya malipo haipo tayari kwa sasa." }, 500);
   }
 }
 

@@ -1,6 +1,6 @@
--- 1Vela dual activation payment setup
--- Automatic payment activates the user immediately after provider success.
--- LIPA NAMBA claims remain pending until an admin approves them.
+-- 1Vela payment flow hardening.
+-- Automatic payments are confirmed server-side and then activate the account.
+-- LIPA NAMBA remains manual/admin-approved.
 
 ALTER TABLE public.payment_requests
   ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'manual',
@@ -10,15 +10,12 @@ ALTER TABLE public.payment_requests
   ADD COLUMN IF NOT EXISTS provider_payload jsonb,
   ADD COLUMN IF NOT EXISTS paid_at timestamptz;
 
-ALTER TABLE public.payment_requests
-  DROP CONSTRAINT IF EXISTS payment_requests_amount_check;
-ALTER TABLE public.payment_requests
-  ADD CONSTRAINT payment_requests_amount_check CHECK (amount = 12000);
+CREATE INDEX IF NOT EXISTS payment_requests_provider_reference_idx
+  ON public.payment_requests(provider_reference);
 
 CREATE INDEX IF NOT EXISTS payment_requests_provider_status_idx
-  ON public.payment_requests (provider, provider_status, created_at DESC);
+  ON public.payment_requests(provider, provider_status, created_at DESC);
 
--- Atomic activation used only by the trusted server after an automatic payment is confirmed.
 CREATE OR REPLACE FUNCTION public.activate_automatic_payment(p_request_id uuid)
 RETURNS public.payment_requests
 LANGUAGE plpgsql
