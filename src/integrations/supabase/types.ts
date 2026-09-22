@@ -29,6 +29,51 @@ export type Database = {
         }
         Relationships: []
       }
+      automatic_payments: {
+        Row: {
+          id: string
+          user_id: string
+          order_id: string | null
+          amount: number
+          currency: string
+          phone: string
+          status: string
+          checkout_url: string | null
+          provider_status: string | null
+          provider_response: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          order_id?: string | null
+          amount?: number
+          currency?: string
+          phone: string
+          status?: string
+          checkout_url?: string | null
+          provider_status?: string | null
+          provider_response?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          order_id?: string | null
+          amount?: number
+          currency?: string
+          phone?: string
+          status?: string
+          checkout_url?: string | null
+          provider_status?: string | null
+          provider_response?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_reward_transactions: {
         Row: {
           id: string

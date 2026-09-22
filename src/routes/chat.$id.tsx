@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { PaywallDialog } from "@/components/paywall-dialog";
 import { getForeigner } from "@/lib/foreigners";
+import { getChatSession, saveChatSession, type StoredChatMessage } from "@/lib/chat-sessions";
 
 export const Route = createFileRoute("/chat/$id")({
   head: ({ params }) => {
@@ -225,7 +226,9 @@ function ChatPage() {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
+  const [userId, setUserId] = useState("");
   const messageCountRef = useRef(0);
+  const messagesRef = useRef<Msg[]>([]);
   const [translated, setTranslated] = useState<Record<number, boolean>>({});
   const rewardShownRef = useRef(false);
   const sessionIdRef = useRef(crypto.randomUUID());
@@ -237,6 +240,7 @@ function ChatPage() {
       const { data } = await supabase.auth.getUser();
       if (!active) return;
       if (data.user) {
+        setUserId(data.user.id);
         const { data: profile } = await supabase
           .from("profiles")
           .select("activated, banned, ban_reason")
@@ -247,12 +251,24 @@ function ChatPage() {
           if (active) navigate({ to: "/login", search: {} });
           return;
         }
-        if (active) setActivated(Boolean(profile?.activated));
+        if (active) {
+          setActivated(Boolean(profile?.activated));
+          const saved = getChatSession(data.user.id, person.id);
+          if (saved) {
+            sessionIdRef.current = saved.sessionId;
+            messagesRef.current = saved.messages as Msg[];
+            setMessages(saved.messages as Msg[]);
+            messageCountRef.current = saved.messages.length;
+            setMessageCount(saved.messages.length);
+            setSessionEnded(saved.ended);
+            setTyping(false);
+          }
+        }
       }
       if (active) setCheckingAccess(false);
     })();
     return () => { active = false; };
-  }, []);
+  }, [navigate, person.id]);
 
   useEffect(() => {
     if (checkingAccess || activated) return;
@@ -274,17 +290,24 @@ function ChatPage() {
     return () => window.clearInterval(timer);
   }, [checkingAccess, activated]);
 
-  // Open the chat with one natural first message, matching a normal chat layout.
+  // Start a fresh chat only when the user has no saved session for this foreigner.
   useEffect(() => {
+    if (!userId) return;
+    const saved = getChatSession(userId, person.id);
+    if (saved) return;
     const timer = window.setTimeout(() => {
       const first = person.opening[0] ?? "Hi! How are you? 😊";
-      setMessages([{ from: "them", text: first, swahili: translateToSwahili(first), time: nowTime() }]);
+      const initial: Msg = { from: "them", text: first, swahili: translateToSwahili(first), time: nowTime() };
+      const session = { sessionId: sessionIdRef.current, foreignerId: person.id, messages: [initial], ended: false, updatedAt: new Date().toISOString() };
+      messagesRef.current = [initial];
+      setMessages([initial]);
       messageCountRef.current = 1;
       setMessageCount(1);
       setTyping(false);
+      saveChatSession(userId, session);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [person]);
+  }, [userId, person.id]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -294,6 +317,15 @@ function ChatPage() {
     if (rewardShownRef.current) return;
     rewardShownRef.current = true;
     setTyping(false);
+    if (userId) {
+      saveChatSession(userId, {
+        sessionId: sessionIdRef.current,
+        foreignerId: person.id,
+        messages: messagesRef.current as StoredChatMessage[],
+        ended: true,
+        updatedAt: new Date().toISOString(),
+      });
+    }
     const { data, error } = await supabase.rpc("credit_chat_reward", {
       p_session_id: sessionIdRef.current,
       p_foreigner_id: person.id,
@@ -307,7 +339,18 @@ function ChatPage() {
     }
     const reward = Number(data ?? person.priceTzs);
     window.dispatchEvent(new Event("vela:balance-updated"));
-    toast.success(`Ujumbe 20 umekamilika. Reward ya TZS ${reward.toLocaleString("en-US")} imeongezwa kwenye Current Balance.`);
+    toast.success(`Chat imekamilika. Reward ya TZS ${reward.toLocaleString("en-US")} imeongezwa kwenye Current Balance.`);
+  }
+
+  function persistMessages(next: Msg[], ended = false) {
+    if (!userId) return;
+    saveChatSession(userId, {
+      sessionId: sessionIdRef.current,
+      foreignerId: person.id,
+      messages: next as StoredChatMessage[],
+      ended,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   function handleSend(e: React.FormEvent) {
@@ -321,26 +364,34 @@ function ChatPage() {
     }
 
     const nextCount = messageCountRef.current + 1;
+    const nextMessages = [...messages, { from: "me" as const, text, time: nowTime() }];
     messageCountRef.current = nextCount;
-    setMessages((m) => [...m, { from: "me", text, time: nowTime() }]);
+    setMessages(nextMessages);
     setMessageCount(nextCount);
     setInput("");
 
-    if (nextCount >= 20) {
+    if (nextCount >= 10) {
+      messagesRef.current = nextMessages;
       void finishSession();
       return;
     }
 
+    persistMessages(nextMessages);
     setTyping(true);
     window.setTimeout(() => {
       const reply = buildAiReply(text);
       const incomingCount = messageCountRef.current + 1;
+      const incoming: Msg = { from: "them", text: reply, swahili: translateToSwahili(reply), time: nowTime() };
+      const withReply = [...nextMessages, incoming];
       messageCountRef.current = incomingCount;
-      setMessages((m) => [...m, { from: "them", text: reply, swahili: translateToSwahili(reply), time: nowTime() }]);
+      setMessages(withReply);
       setMessageCount(incomingCount);
-      if (incomingCount >= 20) {
+      messagesRef.current = withReply;
+      if (incomingCount >= 10) {
+        persistMessages(withReply, true);
         void finishSession();
       } else {
+        persistMessages(withReply);
         setTyping(false);
       }
     }, 1000 + Math.floor(Math.random() * 1000));
@@ -376,13 +427,13 @@ function ChatPage() {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col bg-background px-4 py-5">
         <div className="mb-5 flex items-center justify-center gap-2 rounded-2xl bg-brand-tint px-4 py-3 text-center text-sm font-bold text-primary">
           <CalendarDays className="size-4 shrink-0" />
-          <span>September 14 · {person.topic} · {messageCount}/20 messages</span>
+          <span>September 14 · {person.topic}</span>
         </div>
 
         <div className="mb-5 rounded-3xl bg-primary px-5 py-5 text-center text-primary-foreground shadow-brand">
           <p className="text-sm font-medium opacity-90">You are chatting with {person.name} for {person.minutes} minutes.</p>
           <p className="mt-1 text-lg font-extrabold">Chat session reward: TZS {person.priceTzs.toLocaleString("en-US")}</p>
-          <p className="mt-1 text-xs opacity-80">AI chat partner · {messageCount}/20 messages</p>
+          <p className="mt-1 text-xs opacity-80">AI chat partner</p>
         </div>
 
         <div className="flex-1 space-y-4 pb-4">

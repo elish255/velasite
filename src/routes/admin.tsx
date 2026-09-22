@@ -19,6 +19,19 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 
+type AutomaticPayment = {
+  id: string;
+  user_id: string;
+  order_id: string | null;
+  amount: number;
+  currency: string;
+  phone: string;
+  status: string;
+  provider_status: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type PaymentRequest = {
   id: string;
   user_id: string;
@@ -67,6 +80,7 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
+  const [automaticPayments, setAutomaticPayments] = useState<AutomaticPayment[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -89,15 +103,18 @@ function AdminPage() {
     }
     setAuthorized(true);
 
-    const [{ data: paymentRows, error: paymentError }, { data: profileRows, error: profileError }, { data: withdrawalRows, error: withdrawalError }] = await Promise.all([
+    const [{ data: paymentRows, error: paymentError }, { data: automaticRows, error: automaticError }, { data: profileRows, error: profileError }, { data: withdrawalRows, error: withdrawalError }] = await Promise.all([
       supabase.from("payment_requests").select("id, user_id, phone, amount, status, created_at, provider, provider_reference, provider_status, paid_at").order("created_at", { ascending: false }),
+      supabase.from("automatic_payments").select("id, user_id, order_id, amount, currency, phone, status, provider_status, created_at, updated_at").order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, full_name, phone, balance, activated, banned, ban_reason").order("created_at", { ascending: false }),
       supabase.from("withdrawal_requests").select("id, user_id, amount, fee, payout_amount, phone, status, created_at, provider_reference, provider_status").order("created_at", { ascending: false }),
     ]);
     if (paymentError) toast.error(paymentError.message);
+    if (automaticError) toast.error(automaticError.message);
     if (profileError) toast.error(profileError.message);
     if (withdrawalError) toast.error(withdrawalError.message);
     setPayments((paymentRows as PaymentRequest[]) ?? []);
+    setAutomaticPayments((automaticRows as AutomaticPayment[]) ?? []);
     setProfiles((profileRows as Profile[]) ?? []);
     setWithdrawals((withdrawalRows as WithdrawalRequest[]) ?? []);
     setLoading(false);
@@ -202,7 +219,9 @@ function AdminPage() {
 
         <section className="mt-8 rounded-3xl border border-border bg-card p-6 shadow-card"><div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-brand-tint text-primary"><Bell className="size-5" /></div><div><h2 className="font-display text-2xl font-extrabold">Broadcast Notification</h2><p className="text-sm text-muted-foreground">Tuma notification kwa users wote.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><input value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} placeholder="Title" className="input-base" /><input value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Message" className="input-base" /></div><button type="button" onClick={() => void sendNotification(null)} className="brand-gradient mt-4 rounded-2xl px-5 py-3 font-extrabold text-brand-foreground">Send to All Users</button></section>
 
-        <section className="mt-8"><SectionTitle title="Deposits / Activation Payments" icon={<CreditCard className="size-5" />} count={pendingDeposits.length} /><div className="mt-4 grid gap-3">{payments.length === 0 ? <Empty text="Hakuna deposit request bado." /> : payments.map((payment) => <div key={payment.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold">Simu: {payment.phone}</p><p className="mt-1 text-sm text-muted-foreground">User ID: {payment.user_id}</p><p className="mt-1 text-sm text-muted-foreground">TZS {Number(payment.amount).toLocaleString("en-US")} • {new Date(payment.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">Provider: {payment.provider} • {payment.provider_status || "waiting"}{payment.provider_reference ? ` • Ref: ${payment.provider_reference}` : ""}</p></div><Status status={payment.status} /></div>{payment.status === "pending" && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === payment.id} onClick={() => void reviewDeposit(payment.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive"><XCircle className="size-4" /> Reject</button><button type="button" disabled={busyId === payment.id} onClick={() => void reviewDeposit(payment.id, "approved")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground"><CheckCircle2 className="size-4" /> Approve & Activate</button></div>}</div>)}</div></section>
+        <section className="mt-8"><SectionTitle title="Deposits / Activation Payments" icon={<CreditCard className="size-5" />} count={pendingDeposits.length} /><div className="mt-4 grid gap-3">{payments.length === 0 ? <Empty text="Hakuna deposit request bado." /> : payments.map((payment) => <div key={payment.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-extrabold">{profiles.find((profile) => profile.id === payment.user_id)?.full_name || "Unnamed user"}</p><p className="mt-1 text-sm font-bold text-primary">Namba iliyolipia: {payment.phone}</p><p className="mt-1 text-sm text-muted-foreground">Namba ya account: {profiles.find((profile) => profile.id === payment.user_id)?.phone || "Haijawekwa"}</p><p className="mt-1 text-sm text-muted-foreground">User ID: {payment.user_id}</p><p className="mt-1 text-sm text-muted-foreground">TZS {Number(payment.amount).toLocaleString("en-US")} • {new Date(payment.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">Provider: {payment.provider} • {payment.provider_status || "waiting"}{payment.provider_reference ? ` • Ref: ${payment.provider_reference}` : ""}</p></div><Status status={payment.status} /></div>{payment.status === "pending" && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === payment.id} onClick={() => void reviewDeposit(payment.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive"><XCircle className="size-4" /> Reject</button><button type="button" disabled={busyId === payment.id} onClick={() => void reviewDeposit(payment.id, "approved")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground"><CheckCircle2 className="size-4" /> Approve & Activate</button></div>}</div>)}</div></section>
+
+        <section className="mt-9"><SectionTitle title="Automatic Push Payments" icon={<CreditCard className="size-5" />} count={automaticPayments.length} /><div className="mt-4 grid gap-3">{automaticPayments.length === 0 ? <Empty text="Hakuna Automatic Push payment bado." /> : automaticPayments.map((payment) => { const user = profiles.find((profile) => profile.id === payment.user_id); return <div key={payment.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-extrabold">{user?.full_name || "Unnamed user"}</p><p className="mt-1 text-sm font-bold text-primary">Namba iliyolipia Push: {payment.phone}</p><p className="mt-1 text-sm text-muted-foreground">Namba ya account: {user?.phone || "Haijawekwa"}</p><p className="mt-1 text-sm text-muted-foreground">TZS {Number(payment.amount).toLocaleString("en-US")} • {payment.currency}</p><p className="mt-1 text-xs text-muted-foreground">Order: {payment.order_id || "—"} • {new Date(payment.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">Provider status: {payment.provider_status || "waiting"}</p></div><Status status={payment.status === "paid" ? "approved" : payment.status === "processing" ? "processing" : payment.status === "failed" ? "rejected" : "pending"} /></div></div>; })}</div></section>
 
         <section className="mt-9"><SectionTitle title="Withdrawals" icon={<Wallet className="size-5" />} count={pendingWithdrawals.length} /><div className="mt-4 grid gap-3">{withdrawals.length === 0 ? <Empty text="Hakuna withdrawal request bado." /> : withdrawals.map((item) => <div key={item.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-display text-xl font-extrabold text-primary">TZS {Number(item.amount).toLocaleString("en-US")}</p><p className="mt-1 text-sm font-semibold">Payout: TZS {Number(item.payout_amount ?? item.amount).toLocaleString("en-US")} • Fee: TZS {Number(item.fee ?? 0).toLocaleString("en-US")}</p><p className="mt-1 text-sm">Simu: {item.phone}</p><p className="mt-1 text-xs text-muted-foreground">User ID: {item.user_id} • {new Date(item.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">FimiPay: {item.provider_status || "waiting"}{item.provider_reference ? ` • Ref: ${item.provider_reference}` : ""}</p></div><Status status={item.status === "paid" ? "approved" : item.status} /></div>{item.status === "pending" && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive"><XCircle className="size-4" /> Reject & Refund</button><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "paid")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground"><DollarSign className="size-4" /> Approve & Send FimiPay</button></div>}{item.status === "processing" && <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">FimiPay imepokea payout. Subiri provider confirmation/webhook.</p>}</div>)}</div></section>
 
