@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.payment_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   phone text NOT NULL,
-  amount integer NOT NULL DEFAULT 15000 CHECK (amount = 15000),
+  amount integer NOT NULL DEFAULT 12000 CHECK (amount = 12000),
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at timestamptz NOT NULL DEFAULT now(),
   approved_at timestamptz,

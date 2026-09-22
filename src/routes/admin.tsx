@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
-  DollarSign,
   Loader2,
   LogOut,
   RefreshCw,
@@ -135,42 +134,15 @@ function AdminPage() {
 
   async function reviewWithdrawal(id: string, status: "paid" | "rejected") {
     setBusyId(id);
-    if (status === "rejected") {
-      const { error } = await supabase.rpc("review_withdrawal", { p_request_id: id, p_status: "rejected" });
-      setBusyId(null);
-      if (error) return toast.error(error.message);
-      toast.success("Withdrawal rejected and balance returned.");
-      await loadData();
-      return;
-    }
+    const { error } = await supabase.rpc("review_withdrawal", {
+      p_request_id: id,
+      p_status: status,
+    });
+    setBusyId(null);
+    if (error) return toast.error(error.message);
 
-    try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) throw new Error("Session expired. Login again.");
-      const response = await fetch("/api/fimipay/withdrawal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ requestId: id }),
-      });
-      const contentType = response.headers.get("content-type") || "";
-      const raw = await response.text();
-      let data: { error?: string; status?: string; reference?: string } = {};
-      if (contentType.includes("application/json")) {
-        try { data = JSON.parse(raw) as typeof data; } catch {
-          throw new Error("Server imerudisha JSON isiyosahihi. Jaribu tena.");
-        }
-      } else if (raw.trim()) {
-        const clean = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-        throw new Error(clean.slice(0, 220) || `Server error (HTTP ${response.status})`);
-      }
-      if (!response.ok) throw new Error(data.error || `FimiPay payout failed (HTTP ${response.status})`);
-      toast.success(data.status ? `FimiPay payout: ${data.status}` : "Withdrawal sent to FimiPay.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "FimiPay payout failed");
-    } finally {
-      setBusyId(null);
-      await loadData();
-    }
+    toast.success(status === "paid" ? "Withdrawal approved." : "Withdrawal rejected and balance returned.");
+    await loadData();
   }
 
   async function setActivation(profile: Profile) {
@@ -238,7 +210,7 @@ function AdminPage() {
 
         <section className="mt-9"><SectionTitle title="Automatic Push Payments" icon={<CreditCard className="size-5" />} count={automaticPayments.length} /><div className="mt-4 grid gap-3">{automaticPayments.length === 0 ? <Empty text="Hakuna Automatic Push payment bado." /> : automaticPayments.map((payment) => { const user = profiles.find((profile) => profile.id === payment.user_id); return <div key={payment.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-extrabold">{user?.full_name || "Unnamed user"}</p><p className="mt-1 text-sm font-bold text-primary">Namba iliyolipia Push: {payment.phone}</p><p className="mt-1 text-sm text-muted-foreground">Namba ya account: {user?.phone || "Haijawekwa"}</p><p className="mt-1 text-sm text-muted-foreground">TZS {Number(payment.amount).toLocaleString("en-US")} • {payment.currency}</p><p className="mt-1 text-xs text-muted-foreground">Order: {payment.order_id || "—"} • {new Date(payment.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">Provider status: {payment.provider_status || "waiting"}</p></div><Status status={payment.status === "paid" ? "approved" : payment.status === "processing" ? "processing" : payment.status === "failed" ? "rejected" : "pending"} /></div></div>; })}</div></section>
 
-        <section className="mt-9"><SectionTitle title="Withdrawals" icon={<Wallet className="size-5" />} count={pendingWithdrawals.length} /><div className="mt-4 grid gap-3">{withdrawals.length === 0 ? <Empty text="Hakuna withdrawal request bado." /> : withdrawals.map((item) => <div key={item.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-display text-xl font-extrabold text-primary">TZS {Number(item.amount).toLocaleString("en-US")}</p><p className="mt-1 text-sm font-semibold">Payout: TZS {Number(item.payout_amount ?? item.amount).toLocaleString("en-US")} • Fee: TZS {Number(item.fee ?? 0).toLocaleString("en-US")}</p><p className="mt-1 text-sm font-bold text-primary">Jina: {profiles.find((profile) => profile.id === item.user_id)?.full_name || "Unnamed user"}</p><p className="mt-1 text-sm">Namba iliyolipia: {item.phone}</p><p className="mt-1 text-sm text-muted-foreground">Namba ya account: {profiles.find((profile) => profile.id === item.user_id)?.phone || "Haijawekwa"}</p><p className="mt-1 text-xs text-muted-foreground">User ID: {item.user_id} • {new Date(item.created_at).toLocaleString("en-GB")}</p><p className="mt-1 text-xs text-muted-foreground">FimiPay: {item.provider_status || "waiting"}{item.provider_reference ? ` • Ref: ${item.provider_reference}` : ""}</p></div><Status status={item.status === "paid" ? "approved" : item.status} /></div>{item.status === "pending" && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive"><XCircle className="size-4" /> Reject & Refund</button><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "paid")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground"><DollarSign className="size-4" /> Approve & Send FimiPay</button></div>}{item.status === "processing" && <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">FimiPay imepokea payout. Subiri provider confirmation/webhook.</p>}</div>)}</div></section>
+        <section className="mt-9"><SectionTitle title="Withdrawals" icon={<Wallet className="size-5" />} count={pendingWithdrawals.length} /><div className="mt-4 grid gap-3">{withdrawals.length === 0 ? <Empty text="Hakuna withdrawal request bado." /> : withdrawals.map((item) => <div key={item.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-display text-xl font-extrabold text-primary">TZS {Number(item.amount).toLocaleString("en-US")}</p><p className="mt-1 text-sm font-semibold">Payout: TZS {Number(item.payout_amount ?? item.amount).toLocaleString("en-US")} • Fee: TZS {Number(item.fee ?? 0).toLocaleString("en-US")}</p><p className="mt-1 text-sm font-bold text-primary">Jina: {profiles.find((profile) => profile.id === item.user_id)?.full_name || "Unnamed user"}</p><p className="mt-1 text-sm">Namba iliyolipia: {item.phone}</p><p className="mt-1 text-sm text-muted-foreground">Namba ya account: {profiles.find((profile) => profile.id === item.user_id)?.phone || "Haijawekwa"}</p><p className="mt-1 text-xs text-muted-foreground">User ID: {item.user_id} • {new Date(item.created_at).toLocaleString("en-GB")}</p></div><Status status={item.status === "paid" ? "approved" : item.status} /></div>{item.status === "pending" && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "rejected")} className="flex items-center gap-2 rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-extrabold text-destructive"><XCircle className="size-4" /> Reject & Refund</button><button type="button" disabled={busyId === item.id} onClick={() => void reviewWithdrawal(item.id, "paid")} className="brand-gradient flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold text-brand-foreground"><CheckCircle2 className="size-4" /> Approve</button></div>}</div>)}</div></section>
 
         <section className="mt-9"><SectionTitle title="User Management" icon={<ShieldCheck className="size-5" />} count={profiles.length} /><div className="mt-4 grid gap-3">{profiles.map((profile) => <div key={profile.id} className="rounded-3xl border border-border bg-card p-5 shadow-card"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="font-display text-lg font-extrabold">{profile.full_name || "Unnamed user"}</p><p className="mt-1 text-sm text-muted-foreground">{profile.phone || "No phone"}</p><p className="mt-1 font-bold text-primary">TZS {Number(profile.balance).toLocaleString("en-US")}</p><div className="mt-2 flex flex-wrap gap-2"><Tag text={profile.activated ? "Active" : "Inactive"} /><Tag text={profile.banned ? "Banned" : "Not banned"} danger={profile.banned} /></div></div><div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2"><button type="button" disabled={busyId === profile.id} onClick={() => void setActivation(profile)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-extrabold">{profile.activated ? "Deactivate" : "Activate"}</button><button type="button" disabled={busyId === profile.id} onClick={() => void setBan(profile)} className={profile.banned ? "rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-white" : "rounded-xl bg-destructive/10 px-4 py-2.5 text-sm font-extrabold text-destructive"}>{profile.banned ? "Unban" : "Ban User"}</button><button type="button" onClick={() => void adjustBalance(profile, "add")} className="rounded-xl bg-brand-tint px-4 py-2.5 text-sm font-extrabold text-primary">+ Balance</button><button type="button" onClick={() => void adjustBalance(profile, "subtract")} className="rounded-xl border border-border px-4 py-2.5 text-sm font-extrabold">− Balance</button><button type="button" onClick={() => void sendNotification(profile.id)} className="sm:col-span-2 flex items-center justify-center gap-2 rounded-xl border border-primary/20 px-4 py-2.5 text-sm font-extrabold text-primary"><Bell className="size-4" /> Send Notification</button></div></div></div>)}</div></section>
       </main>
