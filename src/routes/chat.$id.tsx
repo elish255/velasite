@@ -370,7 +370,7 @@ function ChatPage() {
     setMessageCount(nextCount);
     setInput("");
 
-    if (nextCount >= 10) {
+    if (nextCount >= 20) {
       messagesRef.current = nextMessages;
       void finishSession();
       return;
@@ -387,7 +387,7 @@ function ChatPage() {
       setMessages(withReply);
       setMessageCount(incomingCount);
       messagesRef.current = withReply;
-      if (incomingCount >= 10) {
+      if (incomingCount >= 20) {
         persistMessages(withReply, true);
         void finishSession();
       } else {
