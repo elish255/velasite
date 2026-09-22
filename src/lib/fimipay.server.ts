@@ -56,7 +56,9 @@ function normalizeStatus(raw: unknown) {
     root.payment_status,
     root.order_status,
     root.status,
+    transaction.payment_status,
     transaction.status,
+    order.payment_status,
     order.status,
   );
 }
