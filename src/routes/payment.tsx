@@ -59,11 +59,10 @@ function PaymentPage() {
     if (!userId) return;
     const check = async () => {
       const [{ data: profile }, { data: manual }] = await Promise.all([
-        supabase.from("profiles").select("activated,phone,banned").eq("id", userId).maybeSingle(),
+        supabase.from("profiles").select("activated,phone").eq("id", userId).maybeSingle(),
         supabase.from("payment_requests").select("id,phone,amount,status,provider,provider_reference,provider_status,provider_checkout_url,paid_at")
           .eq("user_id", userId).eq("provider", "manual").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
-      if (profile?.banned) { setMessage("Akaunti yako imezuiwa. Wasiliana na admin."); return; }
       if (profile?.activated) { navigate({ to: "/account" }); return; }
       if (profile?.phone && !phone) setPhone(profile.phone);
       setRequest((manual as PaymentRow | null) ?? null);
@@ -79,21 +78,21 @@ function PaymentPage() {
   async function callAutomatic(body: Record<string, unknown>) {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) throw new Error("Login session imekwisha. Ingia tena.");
-    const response = await fetch(body.action === "status" ? `/api/fimipay/payment-status?requestId=${encodeURIComponent(String(body.requestId))}` : "/api/fimipay/payment", {
-      method: body.action === "status" ? "GET" : "POST",
-      headers: { ...(body.action === "status" ? {} : { "Content-Type": "application/json" }), Authorization: `Bearer ${token}` },
-      ...(body.action === "status" ? {} : { body: JSON.stringify(body) }),
+    const response = await fetch("/api/fimipay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data) throw new Error(data?.error || "Imeshindikana kuanzisha malipo.");
-    return data as { request?: PaymentRow; paid?: boolean; failed?: boolean; status?: string; message?: string; error?: string; redirect?: string };
+    return data as { paymentId?: string; orderId?: string; paid?: boolean; failed?: boolean; status?: string; message?: string; error?: string; redirect?: string; request?: PaymentRow };
   }
 
-  async function pollAutomaticPayment(requestId: string) {
+  async function pollAutomaticPayment(paymentId: string) {
     if (pollRef.current) clearInterval(pollRef.current);
     const check = async () => {
       try {
-        const data = await callAutomatic({ action: "status", requestId });
+        const data = await callAutomatic({ action: "status", paymentId });
         if (data.request) setRequest(data.request);
         setLatestStatus(data.status ?? null);
         if (data.paid || data.redirect === "/account") {
@@ -117,13 +116,13 @@ function PaymentPage() {
     setMessage("Push inatumwa kwenye simu yako...");
     try {
       const data = await callAutomatic({ action: "create", phone: phone.trim() });
-      if (data.request) setRequest(data.request);
-      setLatestStatus(data.status ?? "PENDING");
+      setLatestStatus(data.status ?? "pending");
       if (data.paid || data.redirect === "/account") { navigate({ to: "/account" }); return; }
-      if (!data.request?.id) throw new Error(data.error || "Ombi la malipo halijaanzishwa.");
+      if (!data.paymentId) throw new Error(data.error || "Ombi la malipo halijaanzishwa.");
       setMessage(data.message || "Push imetumwa. Angalia simu yako na thibitisha malipo.");
-      await pollAutomaticPayment(data.request.id);
+      await pollAutomaticPayment(data.paymentId);
     } catch (error) {
+      console.error("Automatic payment failed", error);
       setMessage(error instanceof Error ? error.message : "Imeshindikana kuanzisha malipo.");
     } finally { setSaving(false); }
   }
