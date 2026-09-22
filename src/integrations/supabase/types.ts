@@ -167,6 +167,7 @@ export type Database = {
           full_name: string
           id: string
           phone: string
+          username: string | null
           banned: boolean
           ban_reason: string | null
         }
@@ -178,6 +179,7 @@ export type Database = {
           full_name?: string
           id: string
           phone?: string
+          username?: string | null
           banned?: boolean
           ban_reason?: string | null
         }
@@ -189,6 +191,7 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string
+          username?: string | null
           banned?: boolean
           ban_reason?: string | null
         }

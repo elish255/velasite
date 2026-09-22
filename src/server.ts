@@ -72,6 +72,13 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/fimipay/")) {
+        return Response.json(
+          { error: error instanceof Error ? error.message : "Payment service error." },
+          { status: 500, headers: { "Cache-Control": "no-store" } },
+        );
+      }
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

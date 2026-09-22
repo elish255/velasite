@@ -248,7 +248,7 @@ export async function handleFimipayWebhook(request: Request) {
       await supabaseAdmin.from("notifications").insert({
         user_id: payment.user_id,
         title: "Payment received",
-        message: "FimiPay imethibitisha malipo yako. Deposit yako iko tayari kwa approval ya admin.",
+        message: "Malipo yako yamepokelewa. Deposit yako iko tayari kwa approval ya admin.",
       });
     }
     return json({ received: true, matched: true, type: "payment" });

@@ -27,6 +27,7 @@ export const Route = createFileRoute("/register")({
 function RegisterPage() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,18 +38,32 @@ function RegisterPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const normalizedUsername = username.trim().replace(/^@/, "");
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(normalizedUsername)) {
+      setError("Username iwe na herufi 3–30 na itumie herufi, namba au underscore (_).");
+      setLoading(false);
+      return;
+    }
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: fullName.trim(), phone: phone.trim() },
+        data: { full_name: fullName.trim(), username: normalizedUsername, phone: phone.trim() },
       },
     });
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      const message = signUpError.message.toLowerCase();
+      if (message.includes("profiles_username_key") || message.includes("duplicate key") || message.includes("username")) {
+        setError("Username hiyo tayari inatumika. Tafadhali chagua username nyingine.");
+      } else if (message.includes("already registered") || message.includes("already exists")) {
+        setError("Barua pepe hiyo tayari imesajiliwa. Tumia email nyingine au login.");
+      } else {
+        setError(signUpError.message);
+      }
       return;
     }
     if (data.session) {
@@ -82,6 +97,16 @@ function RegisterPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Fredson Allen"
+              className="input-base"
+            />
+          </Field>
+          <Field label="Username">
+            <input
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+              placeholder="username123"
+              maxLength={30}
               className="input-base"
             />
           </Field>
