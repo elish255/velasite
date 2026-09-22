@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const CREATE_URL = process.env.FIMIPAY_CREATE_PAYMENT_URL || "https://fimipay.com/api/v1/payment/create_order";
-const STATUS_URL = process.env.FIMIPAY_ORDER_STATUS_URL || "https://fimipay.com/api/v1/payment/order_status";
+const CREATE_URL = process.env["FIMIPAY_CREATE_PAYMENT_URL"] || "https://fimipay.com/api/v1/payment/create_order";
+const STATUS_URL = process.env["FIMIPAY_ORDER_STATUS_URL"] || "https://fimipay.com/api/v1/payment/order_status";
 
 export type FimipayResult = {
   ok: boolean;
@@ -47,19 +47,19 @@ export function normalizeTanzaniaPhone(input: string) {
 function normalizeStatus(raw: unknown) {
   const root = object(raw);
   const data = dataOf(raw);
-  const transaction = object(data.transaction);
-  const order = object(data.order);
+  const transaction = object(data["transaction"]);
+  const order = object(data["order"]);
   return firstString(
-    data.payment_status,
-    data.order_status,
-    data.status,
-    root.payment_status,
-    root.order_status,
-    root.status,
-    transaction.payment_status,
-    transaction.status,
-    order.payment_status,
-    order.status,
+    data["payment_status"],
+    data["order_status"],
+    data["status"],
+    root["payment_status"],
+    root["order_status"],
+    root["status"],
+    transaction["payment_status"],
+    transaction["status"],
+    order["payment_status"],
+    order["status"],
   );
 }
 
@@ -67,29 +67,29 @@ export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): Fimipay
   const root = object(raw);
   const data = dataOf(raw);
   const reference = firstString(
-    data.order_id,
-    data.orderId,
-    data.reference,
-    data.transaction_id,
-    data.transaction_reference,
-    root.order_id,
-    root.reference,
-    root.transaction_id,
-    root.id,
+    data["order_id"],
+    data["orderId"],
+    data["reference"],
+    data["transaction_id"],
+    data["transaction_reference"],
+    root["order_id"],
+    root["reference"],
+    root["transaction_id"],
+    root["id"],
   );
   const checkoutUrl = firstString(
-    data.checkout_url,
-    data.checkoutUrl,
-    data.payment_url,
-    data.paymentUrl,
-    data.url,
-    root.checkout_url,
-    root.payment_url,
-    root.url,
+    data["checkout_url"],
+    data["checkoutUrl"],
+    data["payment_url"],
+    data["paymentUrl"],
+    data["url"],
+    root["checkout_url"],
+    root["payment_url"],
+    root["url"],
   );
   const status = normalizeStatus(raw);
-  const message = firstString(root.message, data.message, root.error);
-  const rootStatus = typeof root.status === "string" ? root.status.toLowerCase() : "";
+  const message = firstString(root["message"], data["message"], root["error"]);
+  const rootStatus = typeof root["status"] === "string" ? root["status"].toLowerCase() : "";
   const ok = httpOk && ["", "success", "successful", "pending"].includes(rootStatus);
   return { ok, raw, reference, checkoutUrl, status, message };
 }
@@ -136,7 +136,7 @@ export async function createFimipayPayment(input: {
     buyer_name: input.fullName || "1Vela User",
     buyer_phone: phone,
     amount: input.amount,
-    currency: process.env.FIMIPAY_CURRENCY || "TZS",
+    currency: process.env["FIMIPAY_CURRENCY"] || "TZS",
     payment_method: "mobile",
   };
   const result = await fimipayFetch(CREATE_URL, payload, 20000);
@@ -173,25 +173,25 @@ export async function createFimipayWithdrawal(input: {
   email: string;
 }) {
   const apiKey = requiredEnv("FIMIPAY_API_KEY");
-  const url = process.env.FIMIPAY_WITHDRAWAL_URL || process.env.FIMIPAY_WITHDRAWAL_PATH;
+  const url = process.env["FIMIPAY_WITHDRAWAL_URL"] || process.env["FIMIPAY_WITHDRAWAL_PATH"];
   if (!url) throw new Error("FIMIPAY_WITHDRAWAL_URL haijawekwa kwenye Vercel.");
   const target = /^https?:\/\//i.test(url)
     ? url
-    : `${(process.env.FIMIPAY_API_BASE_URL || "").replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+    : `${(process.env["FIMIPAY_API_BASE_URL"] || "").replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
   const phone = normalizeTanzaniaPhone(input.phone);
   const payload = {
     amount: input.payoutAmount,
     requested_amount: input.amount,
     payout_amount: input.payoutAmount,
     fee: input.fee,
-    currency: process.env.FIMIPAY_CURRENCY || "TZS",
+    currency: process.env["FIMIPAY_CURRENCY"] || "TZS",
     phone,
     customer_phone: phone,
     customer_name: input.fullName,
     email: input.email,
     order_id: input.requestId,
     reference: input.requestId,
-    description: process.env.FIMIPAY_WITHDRAWAL_DESCRIPTION || "1Vela withdrawal",
+    description: process.env["FIMIPAY_WITHDRAWAL_DESCRIPTION"] || "1Vela withdrawal",
   };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
