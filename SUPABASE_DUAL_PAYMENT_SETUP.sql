@@ -1,6 +1,6 @@
--- 1Vela dual activation payment setup
--- Automatic payment activates the user immediately after provider success.
--- LIPA NAMBA claims remain pending until an admin approves them.
+-- 1Vela dual activation payment setup.
+-- Automatic payment activates the user immediately after a confirmed success.
+-- LIPA NAMBA remains pending until an admin approves it.
 
 ALTER TABLE public.payment_requests
   ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'manual',
@@ -18,7 +18,6 @@ ALTER TABLE public.payment_requests
 CREATE INDEX IF NOT EXISTS payment_requests_provider_status_idx
   ON public.payment_requests (provider, provider_status, created_at DESC);
 
--- Atomic activation used only by the trusted server after an automatic payment is confirmed.
 CREATE OR REPLACE FUNCTION public.activate_automatic_payment(p_request_id uuid)
 RETURNS public.payment_requests
 LANGUAGE plpgsql
@@ -36,16 +35,14 @@ BEGIN
   IF v_payment.id IS NULL THEN
     RAISE EXCEPTION 'Payment request not found';
   END IF;
-
   IF v_payment.provider <> 'automatic' THEN
     RAISE EXCEPTION 'Only automatic payments can auto-activate';
   END IF;
-
   IF v_payment.status = 'approved' THEN
     RETURN v_payment;
   END IF;
-
-  IF lower(coalesce(v_payment.provider_status, '')) NOT IN ('success','successful','paid','completed','complete','approved','successed') THEN
+  IF lower(coalesce(v_payment.provider_status, '')) NOT IN
+     ('success','successful','paid','completed','complete','approved','successed') THEN
     RAISE EXCEPTION 'Automatic payment is not confirmed';
   END IF;
 
@@ -57,9 +54,7 @@ BEGIN
   WHERE id = v_payment.id
   RETURNING * INTO v_payment;
 
-  UPDATE public.profiles
-  SET activated = true
-  WHERE id = v_payment.user_id;
+  UPDATE public.profiles SET activated = true WHERE id = v_payment.user_id;
 
   INSERT INTO public.notifications(user_id, title, message)
   VALUES (

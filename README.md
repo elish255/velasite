@@ -4,10 +4,10 @@
 
 ## This update
 
-- FimiPay server-side automatic/push activation payment integration.
-- FimiPay order-status polling and signed webhook endpoint.
+- Server-side automatic/push activation payment integration with automatic account activation.
+- Order-status polling and signed webhook endpoint.
 - Admin deposit approval/rejection.
-- Admin withdrawal approval/rejection with FimiPay payout.
+- Admin withdrawal approval/rejection with automatic payout.
 - Admin activate/deactivate users.
 - Admin ban/unban users.
 - Admin add/reduce user balance with a ledger.
@@ -31,7 +31,7 @@ Copy `.env.example` into your deployment configuration. Never commit `.env` or s
 
 See `FIMIPAY_SETUP.md` for the exact environment-variable names and webhook URL.
 
-The FimiPay API base URL and endpoint paths are intentionally configurable because the supplied FimiPay docs page is client-rendered and its endpoint details were not available to the source parser. Use the exact values from your FimiPay merchant dashboard/docs.
+The provider endpoint values are configurable through Vercel environment variables. Keep all provider secrets server-side.
 
 ## Development
 

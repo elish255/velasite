@@ -169,9 +169,10 @@ export async function createFimipayPayment(input: {
 
 export async function getFimipayOrderStatus(reference: string) {
   const config = getFimipayConfig();
-  const result = await fimipayFetch(config.orderStatusUrl, {
+  const statusUrl = config.orderStatusUrl.replaceAll("{reference}", encodeURIComponent(reference));
+  const result = await fimipayFetch(statusUrl, {
     method: "POST",
-    body: JSON.stringify({ order_id: reference }),
+    body: JSON.stringify({ order_id: reference, reference }),
   });
   return normalizeFimipayResponse(result.json, result.response.ok);
 }

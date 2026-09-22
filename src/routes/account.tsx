@@ -95,11 +95,6 @@ function AccountPage() {
       return;
     }
 
-    if (nextProfile && !nextProfile.activated) {
-      navigate({ to: "/payment" });
-      return;
-    }
-
     setEmail(user.email ?? "");
     setProfile(nextProfile);
     setNotifications((notificationRows as Notification[]) ?? []);

@@ -52,7 +52,7 @@ function RegisterPage() {
       return;
     }
     if (data.session) {
-      navigate({ to: "/payment" });
+      navigate({ to: "/account" });
     } else {
       navigate({ to: "/login", search: { registered: true } });
     }

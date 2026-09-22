@@ -129,7 +129,7 @@ export async function handleFimipayPayment(request: Request, parsedBody?: { phon
 
     const { data: refreshed } = await supabaseAdmin
       .from("payment_requests")
-      .select("id, phone, amount, status, provider_reference, provider_status, provider_checkout_url")
+      .select(paymentSelect())
       .eq("id", created.id)
       .maybeSingle();
 
