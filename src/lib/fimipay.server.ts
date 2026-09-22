@@ -21,11 +21,14 @@ function optionalEnv(name: string, fallback = "") {
 }
 
 export function getFimipayConfig() {
+  const directCreateUrl = optionalEnv("FIMIPAY_CREATE_PAYMENT_URL");
+  const directStatusUrl = optionalEnv("FIMIPAY_ORDER_STATUS_URL");
+  const baseUrl = optionalEnv("FIMIPAY_API_BASE_URL", "https://fimipay.com/api/v1").replace(/\/$/, "");
   return {
-    baseUrl: requiredEnv("FIMIPAY_API_BASE_URL").replace(/\/$/, ""),
+    baseUrl,
     apiKey: requiredEnv("FIMIPAY_API_KEY"),
-    createPaymentPath: optionalEnv("FIMIPAY_CREATE_PAYMENT_PATH", "/payment/create"),
-    orderStatusPath: optionalEnv("FIMIPAY_ORDER_STATUS_PATH", "/order/status/{reference}"),
+    createPaymentUrl: directCreateUrl || `${baseUrl}${optionalEnv("FIMIPAY_CREATE_PAYMENT_PATH", "/payment/create_order")}`,
+    orderStatusUrl: directStatusUrl || `${baseUrl}${optionalEnv("FIMIPAY_ORDER_STATUS_PATH", "/payment/order_status")}`,
     withdrawalPath: optionalEnv("FIMIPAY_WITHDRAWAL_PATH", "/withdrawal/create"),
     webhookSecret: optionalEnv("FIMIPAY_WEBHOOK_SECRET"),
     webhookSignatureHeader: optionalEnv("FIMIPAY_WEBHOOK_SIGNATURE_HEADER", "x-fimipay-signature"),
@@ -143,27 +146,21 @@ export async function createFimipayPayment(input: {
   callbackUrl: string;
 }) {
   const config = getFimipayConfig();
-  const [firstName = "1Vela", ...lastParts] = input.fullName.trim().split(/\s+/).filter(Boolean);
-  const lastName = lastParts.join(" ");
   const payload = {
+    buyer_email: input.email,
+    buyer_name: input.fullName,
+    buyer_phone: input.phone,
     amount: input.amount,
     currency: optionalEnv("FIMIPAY_CURRENCY", "TZS"),
-    phone: input.phone,
-    customer_phone: input.phone,
-    customer_name: input.fullName,
-    first_name: firstName,
-    last_name: lastName,
-    email: input.email,
+    payment_method: "mobile",
     order_id: input.requestId,
     reference: input.requestId,
     description: optionalEnv("FIMIPAY_PAYMENT_DESCRIPTION", "1Vela activation payment"),
-    payment_method: optionalEnv("FIMIPAY_PAYMENT_METHOD", "push"),
-    payment_type: optionalEnv("FIMIPAY_PAYMENT_TYPE", "mobile_money"),
     callback_url: input.callbackUrl,
     return_url: input.callbackUrl,
     ...parseJsonEnv("FIMIPAY_CREATE_PAYMENT_EXTRA_JSON"),
   };
-  const result = await fimipayFetch(config.createPaymentPath, {
+  const result = await fimipayFetch(config.createPaymentUrl, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -172,10 +169,10 @@ export async function createFimipayPayment(input: {
 
 export async function getFimipayOrderStatus(reference: string) {
   const config = getFimipayConfig();
-  const path = config.orderStatusPath.includes("{reference}")
-    ? config.orderStatusPath
-    : `${config.orderStatusPath.replace(/\/$/, "")}/${encodeURIComponent(reference)}`;
-  const result = await fimipayFetch(path, { method: "GET" });
+  const result = await fimipayFetch(config.orderStatusUrl, {
+    method: "POST",
+    body: JSON.stringify({ order_id: reference }),
+  });
   return normalizeFimipayResponse(result.json, result.response.ok);
 }
 
@@ -204,7 +201,7 @@ export async function createFimipayWithdrawal(input: {
     description: optionalEnv("FIMIPAY_WITHDRAWAL_DESCRIPTION", "1Vela withdrawal"),
     ...parseJsonEnv("FIMIPAY_WITHDRAWAL_EXTRA_JSON"),
   };
-  const result = await fimipayFetch(config.withdrawalPath, {
+  const result = await fimipayFetch(joinUrl(config.baseUrl, config.withdrawalPath), {
     method: "POST",
     body: JSON.stringify(payload),
   });

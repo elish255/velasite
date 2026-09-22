@@ -167,7 +167,6 @@ export type Database = {
           full_name: string
           id: string
           phone: string
-          username: string | null
           banned: boolean
           ban_reason: string | null
         }
@@ -179,7 +178,6 @@ export type Database = {
           full_name?: string
           id: string
           phone?: string
-          username?: string | null
           banned?: boolean
           ban_reason?: string | null
         }
@@ -191,7 +189,6 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string
-          username?: string | null
           banned?: boolean
           ban_reason?: string | null
         }
@@ -272,6 +269,10 @@ export type Database = {
           p_request_id: string
           p_status: string
         }
+        Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
+      }
+      activate_automatic_payment: {
+        Args: { p_request_id: string }
         Returns: Database["public"]["Tables"]["payment_requests"]["Row"]
       }
       request_withdrawal: {

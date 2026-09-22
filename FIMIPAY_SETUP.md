@@ -1,51 +1,47 @@
-# 1Vela — Automatic Payment Setup
+# 1Vela — FimiPay Automatic Push
 
-The payment provider is used only on the server. The customer-facing pages do not display the provider name.
+The Vercel function is:
 
-## API routes used by the app
+`api/fimipay.ts`
 
-- `POST /api/fimipay/payment` — creates the activation payment request.
-- `GET /api/fimipay/payment-status?requestId=...` — checks the order status.
-- `POST /api/fimipay/webhook` — receives provider callbacks.
-- `POST /api/fimipay/withdrawal` — admin-only payout request.
+The browser calls:
 
-The browser never receives the provider API key.
+`POST /api/fimipay`
+
+The FimiPay secret stays server-side.
 
 ## Vercel Environment Variables
 
 Required:
 
-- `FIMIPAY_API_KEY` — live provider secret key
-- `FIMIPAY_API_BASE_URL` — provider API base URL
-- `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_PUBLISHABLE_KEY` — Supabase publishable key
-- `SUPABASE_SECRET_KEY` — Supabase server secret key
+- `FIMIPAY_API_KEY` = your LIVE FimiPay secret key
+- `FIMIPAY_AMOUNT` = `12000`
+- `FIMIPAY_CURRENCY` = `TZS`
+- `SUPABASE_URL` = your Supabase project URL
+- `SUPABASE_PUBLISHABLE_KEY` = your Supabase publishable key
+- `SUPABASE_SECRET_KEY` = your Supabase secret key
 
-`SUPABASE_SERVICE_ROLE_KEY` can be used instead of `SUPABASE_SECRET_KEY` if that is what your Supabase setup provides.
+`SUPABASE_SERVICE_ROLE_KEY` can be used instead of `SUPABASE_SECRET_KEY`.
 
-Recommended:
+Optional:
 
-- `FIMIPAY_CREATE_PAYMENT_PATH`
-- `FIMIPAY_ORDER_STATUS_PATH`
-- `FIMIPAY_CURRENCY=TZS`
-- `ACTIVATION_FEE=12000`
+- `FIMIPAY_CREATE_PAYMENT_URL`
+- `FIMIPAY_ORDER_STATUS_URL`
 
-Optional provider-specific settings are supported by `src/lib/fimipay.server.ts`.
-
-Do **not** use `VITE_FIMIPAY_API_KEY`. Secrets must stay server-side.
+Do NOT use `VITE_FIMIPAY_API_KEY`.
 
 After changing Vercel Environment Variables, redeploy the project.
 
 ## 1Vela amount
 
-The 1Vela activation payment is **TZS 12,000**.
+The 1Vela activation payment is **TZS 12,000**. The TZS 16,000 amount is not used by this 1Vela project.
 
 ## Flow
 
 1. Logged-in user opens `/payment`.
-2. User enters a mobile-money phone number.
-3. The server creates an automatic payment request.
+2. User enters mobile-money phone number.
+3. `/api/fimipay` creates a FimiPay push order.
 4. The request is stored in `payment_requests`.
-5. The page polls the order status while it is pending.
-6. When payment is confirmed, the request is marked as paid/provider-confirmed.
-7. The existing 1Vela admin approval flow remains responsible for activating the account.
+5. The page polls FimiPay order status.
+6. When FimiPay confirms payment, `provider_status` and `paid_at` are updated.
+7. The account is NOT automatically activated; the existing 1Vela admin approval flow remains responsible for approving the activation payment.

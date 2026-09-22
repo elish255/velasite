@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import {
+  handleUnifiedFimipayApi,
   handleFimipayPayment,
   handleFimipayPaymentStatus,
   handleFimipayWebhook,
@@ -54,6 +55,9 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
+      if (url.pathname === "/api/fimipay" && request.method === "POST") {
+        return await handleUnifiedFimipayApi(request);
+      }
       if (url.pathname === "/api/fimipay/payment" && request.method === "POST") {
         return await handleFimipayPayment(request);
       }
@@ -72,13 +76,6 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
-      const url = new URL(request.url);
-      if (url.pathname.startsWith("/api/fimipay/")) {
-        return Response.json(
-          { error: error instanceof Error ? error.message : "Payment service error." },
-          { status: 500, headers: { "Cache-Control": "no-store" } },
-        );
-      }
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

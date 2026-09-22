@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 type Profile = {
-  username: string | null;
   full_name: string;
   phone: string;
   balance: number;
@@ -69,7 +68,7 @@ function AccountPage() {
     const [{ data: row }, { data: notificationRows }, { data: withdrawalRows }, { data: rewardRows }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("username, full_name, phone, balance, activated, banned, ban_reason")
+        .select("full_name, phone, balance, activated, banned, ban_reason")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -96,17 +95,13 @@ function AccountPage() {
       return;
     }
 
-    setEmail(user.email ?? "");
-    setProfile(nextProfile);
-
-    // Keep unactivated users on the activation/payment flow instead of
-    // relying on a dashboard button they may not notice. Activated users
-    // continue to the normal dashboard.
     if (nextProfile && !nextProfile.activated) {
       navigate({ to: "/payment" });
       return;
     }
 
+    setEmail(user.email ?? "");
+    setProfile(nextProfile);
     setNotifications((notificationRows as Notification[]) ?? []);
     setWithdrawn((withdrawalRows ?? []).reduce((sum, item) => sum + Number(item.amount ?? 0), 0));
     setBonus((rewardRows ?? []).reduce((sum, item) => sum + Number(item.amount ?? 0), 0));
@@ -128,11 +123,9 @@ function AccountPage() {
   const unreadCount = notifications.filter((item) => item.user_id !== null && !item.read_at).length;
 
   const greetingName = useMemo(() => {
-    const username = profile?.username?.trim();
-    if (username) return username.replace(/^@/, "");
     const name = profile?.full_name?.trim();
-    return name ? name.split(/\s+/)[0] : "User";
-  }, [profile?.username, profile?.full_name]);
+    return name ? name.split(/\s+/)[0] : "Member";
+  }, [profile?.full_name]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -256,8 +249,8 @@ function AccountPage() {
         {!profile?.activated && (
           <section className="mt-7 rounded-[28px] border border-amber-200 bg-amber-50 p-6">
             <p className="font-extrabold text-amber-900">Account bado haija-activate</p>
-            <p className="mt-1 text-sm text-amber-800">Lipa activation fee ya 12,000 TZS, kisha admin ata-review na ku-activate account yako.</p>
-            <Link to="/payment" className="mx-auto mt-5 flex w-full max-w-sm items-center justify-center rounded-2xl bg-amber-900 px-6 py-5 text-lg font-extrabold text-white shadow-lg transition hover:scale-[1.01] sm:w-auto sm:min-w-72">Activate Account</Link>
+            <p className="mt-1 text-sm text-amber-800">Chagua njia ya malipo kwenye ukurasa wa activation ili kuendelea.</p>
+            <Link to="/payment" className="mt-4 inline-flex rounded-2xl bg-amber-900 px-5 py-3 font-extrabold text-white">Activate Account</Link>
           </section>
         )}
 
