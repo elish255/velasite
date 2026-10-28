@@ -1,6 +1,7 @@
 -- Restore the admin panel contract for projects where profiles.balance was omitted.
 ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS balance numeric NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS balance numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS activated boolean NOT NULL DEFAULT false;
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
