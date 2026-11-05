@@ -58,7 +58,7 @@ export async function handleFimipayPayment(request: Request) {
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (pending) return json({ request: pending, message: "Ombi la malipo tayari limetumwa. Angalia simu yako." });
 
-  const amount = Number(process.env["FIMIPAY_AMOUNT"] || process.env["VITE_ACTIVATION_FEE"] || process.env["ACTIVATION_FEE"] || 12000);
+  const amount = 15000;
   const { data: created, error: createError } = await auth.supabase.from("payment_requests")
     .insert({ user_id: auth.userId, phone, amount, provider: "automatic" })
     .select("id,phone,amount,status,provider,provider_reference,provider_status,provider_checkout_url,paid_at").single();

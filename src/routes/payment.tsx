@@ -17,7 +17,7 @@ export const Route = createFileRoute("/payment")({
 
 const LIPA_NAMBA = "251226427";
 const LIPA_JINA = "INNOCENT EDWARD";
-const PRICE = Number(import.meta.env.VITE_ACTIVATION_FEE || 12000);
+const PRICE = 15000;
 type Method = "automatic" | "manual";
 
 type PaymentRow = {

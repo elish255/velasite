@@ -130,6 +130,16 @@ function AdminPage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  useEffect(() => {
+    if (!authorized) return;
+    const timeout = window.setTimeout(async () => {
+      await supabase.auth.signOut();
+      toast.info("Admin session imekwisha. Ingia tena.");
+      navigate({ to: "/login", search: {} });
+    }, 30 * 60 * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [authorized, navigate]);
+
   async function reviewDeposit(id: string, status: "approved" | "rejected") {
     setBusyId(id);
     const { error } = await supabase.rpc("review_activation_payment", { p_request_id: id, p_status: status });
