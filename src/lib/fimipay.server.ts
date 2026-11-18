@@ -1,8 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const CREATE_URL = process.env["FIMIPAY_CREATE_PAYMENT_URL"] || "https://fimipay.com/api/v1/payment/create_order";
-const STATUS_URL = process.env["FIMIPAY_ORDER_STATUS_URL"] || "https://fimipay.com/api/v1/payment/order_status";
+function getDaliPayApiBaseUrl() {
+  const baseUrl = requiredEnv("DALIPAY_API_BASE_URL").replace(/\/+$/, "");
+  return baseUrl.endsWith("/api/v1") ? baseUrl : `${baseUrl}/api/v1`;
+}
 
 export type FimipayResult = {
   ok: boolean;
@@ -67,6 +69,8 @@ export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): Fimipay
   const root = object(raw);
   const data = dataOf(raw);
   const reference = firstString(
+    data["uuid"],
+    root["uuid"],
     data["order_id"],
     data["orderId"],
     data["reference"],
@@ -89,13 +93,14 @@ export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): Fimipay
   );
   const status = normalizeStatus(raw);
   const message = firstString(root["message"], data["message"], root["error"]);
-  const rootStatus = typeof root["status"] === "string" ? root["status"].toLowerCase() : "";
-  const ok = httpOk && ["", "success", "successful", "pending"].includes(rootStatus);
+  const acceptedStatuses = ["success", "successful", "processing", "pending", "awaiting_approval"];
+  const ok = httpOk && root["success"] !== false && (root["success"] === true || acceptedStatuses.includes((status ?? "").toLowerCase()));
   return { ok, raw, reference, checkoutUrl, status, message };
 }
 
 async function fimipayFetch(url: string, body: Record<string, unknown>, timeoutMs: number) {
-  const apiKey = requiredEnv("FIMIPAY_API_KEY");
+  const publicKey = requiredEnv("DALIPAY_PUBLIC_KEY");
+  const secretKey = requiredEnv("DALIPAY_SECRET_KEY");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -104,8 +109,9 @@ async function fimipayFetch(url: string, body: Record<string, unknown>, timeoutM
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "User-Agent": "FimiPay-SDK/1.0",
-        Authorization: `Bearer ${apiKey}`,
+        "User-Agent": "1Vela-DaliPay/1.0",
+        "X-Public-Key": publicKey,
+        "X-Secret-Key": secretKey,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -127,25 +133,34 @@ async function fimipayFetch(url: string, body: Record<string, unknown>, timeoutM
 export async function createFimipayPayment(input: {
   amount: number;
   phone: string;
+  provider: string;
   fullName: string;
   email: string;
 }) {
   const phone = normalizeTanzaniaPhone(input.phone);
   const payload = {
-    buyer_email: input.email,
-    buyer_name: input.fullName || "1Vela User",
-    buyer_phone: phone,
+    account_number: phone,
     amount: input.amount,
-    currency: process.env["FIMIPAY_CURRENCY"] || "TZS",
-    payment_method: "mobile",
+    currency: "TZS",
+    provider: input.provider,
+    external_id: `vela_${Date.now()}`.slice(0, 30),
+    customer_name: input.fullName || "1Vela User",
   };
-  const result = await fimipayFetch(CREATE_URL, payload, 20000);
+  const result = await fimipayFetch(`${getDaliPayApiBaseUrl()}/collections`, payload, 20000);
   return normalizeFimipayResponse(result.json, result.response.ok);
 }
 
 export async function getFimipayOrderStatus(orderId: string) {
-  const result = await fimipayFetch(STATUS_URL, { order_id: orderId }, 12000);
-  return normalizeFimipayResponse(result.json, result.response.ok);
+  const publicKey = requiredEnv("DALIPAY_PUBLIC_KEY");
+  const secretKey = requiredEnv("DALIPAY_SECRET_KEY");
+  const response = await fetch(`${getDaliPayApiBaseUrl()}/collections/${encodeURIComponent(orderId)}/status`, {
+    headers: { Accept: "application/json", "X-Public-Key": publicKey, "X-Secret-Key": secretKey },
+    signal: AbortSignal.timeout(12000),
+  });
+  const text = await response.text();
+  let json: unknown = {};
+  try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text }; }
+  return normalizeFimipayResponse(json, response.ok);
 }
 
 export function createUserSupabaseClient(accessToken: string) {

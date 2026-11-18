@@ -17,7 +17,7 @@ export const Route = createFileRoute("/payment")({
 
 const LIPA_NAMBA = "251226427";
 const LIPA_JINA = "INNOCENT EDWARD";
-const PRICE = Number(import.meta.env.VITE_ACTIVATION_FEE || 12000);
+const PRICE = 15000;
 type Method = "automatic" | "manual";
 
 type PaymentRow = {
@@ -39,6 +39,7 @@ function PaymentPage() {
   const [paidPrompt, setPaidPrompt] = useState(false);
   const [firstPopup, setFirstPopup] = useState(false);
   const [phone, setPhone] = useState("");
+  const [paymentProvider, setPaymentProvider] = useState("Mpesa");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [latestStatus, setLatestStatus] = useState<string | null>(null);
@@ -78,10 +79,15 @@ function PaymentPage() {
   async function callAutomatic(body: Record<string, unknown>) {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) throw new Error("Login session imekwisha. Ingia tena.");
-    const response = await fetch("/api/fimipay", {
-      method: "POST",
+    const isStatusCheck = body.action === "status";
+    const requestId = typeof body.paymentId === "string" ? body.paymentId : "";
+    const url = isStatusCheck
+      ? `/api/fimipay/payment-status?requestId=${encodeURIComponent(requestId)}`
+      : "/api/fimipay/payment";
+    const response = await fetch(url, {
+      method: isStatusCheck ? "GET" : "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+      ...(isStatusCheck ? {} : { body: JSON.stringify(body) }),
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data) throw new Error(data?.error || "Imeshindikana kuanzisha malipo.");
@@ -115,7 +121,7 @@ function PaymentPage() {
     setSaving(true);
     setMessage("Push inatumwa kwenye simu yako...");
     try {
-      const data = await callAutomatic({ action: "create", phone: phone.trim() });
+      const data = await callAutomatic({ action: "create", phone: phone.trim(), provider: paymentProvider });
       setLatestStatus(data.status ?? "pending");
       if (data.paid || data.redirect === "/account") { navigate({ to: "/account" }); return; }
       if (!data.paymentId) throw new Error(data.error || "Ombi la malipo halijaanzishwa.");
@@ -174,8 +180,17 @@ function PaymentPage() {
             <div className="mt-5 rounded-2xl border border-primary/30 bg-primary/5 p-5">
               <div className="text-center text-5xl">⚡</div>
               <h2 className="mt-3 text-center text-xl font-extrabold">LIPA KWA PUSH</h2>
-              <p className="mt-2 text-center text-sm text-muted-foreground">Weka namba ya simu ya M-Pesa/Mixx/Airtel Money/HaloPesa unayotaka kulipia.</p>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="0712345678" className="mt-4 w-full rounded-xl border border-input bg-background px-3 py-3 outline-none" disabled={saving} />
+              <p className="mt-2 text-center text-sm text-muted-foreground">Chagua mtandao unaohusishwa na namba ya simu unayotumia kulipia.</p>
+              <label htmlFor="payment-provider" className="mt-4 block text-sm font-semibold">Mtandao wa simu</label>
+              <select id="payment-provider" value={paymentProvider} onChange={(e) => setPaymentProvider(e.target.value)} className="mt-2 w-full rounded-xl border border-input bg-background px-3 py-3 outline-none" disabled={saving}>
+                <option value="Mpesa">M-Pesa</option>
+                <option value="Tigo">Mixx by Yas (Tigo)</option>
+                <option value="Airtel">Airtel Money</option>
+                <option value="Halopesa">HaloPesa</option>
+                <option value="Azampesa">AzamPesa</option>
+              </select>
+              <label htmlFor="payment-phone" className="mt-3 block text-sm font-semibold">Namba ya simu</label>
+              <input id="payment-phone" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="0712345678" className="mt-2 w-full rounded-xl border border-input bg-background px-3 py-3 outline-none" disabled={saving} />
               <button onClick={() => void startAutomaticPayment()} disabled={saving || !phone.trim()} className="cta-glow mt-3 w-full rounded-xl bg-primary px-4 py-3 font-extrabold text-primary-foreground disabled:opacity-60">
                 {saving ? "Inatuma Push..." : `⚡ LIPA TZS ${PRICE.toLocaleString()} KWA PUSH`}
               </button>
