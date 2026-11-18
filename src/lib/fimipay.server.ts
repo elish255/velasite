@@ -133,6 +133,7 @@ async function fimipayFetch(url: string, body: Record<string, unknown>, timeoutM
 export async function createFimipayPayment(input: {
   amount: number;
   phone: string;
+  provider: string;
   fullName: string;
   email: string;
 }) {
@@ -141,7 +142,7 @@ export async function createFimipayPayment(input: {
     account_number: phone,
     amount: input.amount,
     currency: "TZS",
-    provider: process.env["DALIPAY_PROVIDER"] || "Mpesa",
+    provider: input.provider,
     external_id: `vela_${Date.now()}`.slice(0, 30),
     customer_name: input.fullName || "1Vela User",
   };
