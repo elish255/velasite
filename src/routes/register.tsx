@@ -42,7 +42,7 @@ function RegisterPage() {
       password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: fullName.trim(), phone: phone.trim() },
+        data: { full_name: fullName.trim(), phone: phone.trim(), app_origin: "1vela" },
       },
     });
     setLoading(false);
