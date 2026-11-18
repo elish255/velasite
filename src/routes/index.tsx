@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock, Download, Tag, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SiteHeader } from "@/components/site-header";
-import { formatTzs, shuffleForeigners, usdEquivalent } from "@/lib/foreigners";
+import { foreigners, formatTzs, usdEquivalent } from "@/lib/foreigners";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "1Vela — Lipwa kwa kuchati na wageni" },
       {
         property: "og:description",
-        content: "Chati na wageni, wafundishe Kiswahili na ulipwe kwa kila dakika.",
+        content:
+          "Chati na wageni, wafundishe Kiswahili na ulipwe kwa kila dakika.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -28,8 +29,16 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const [showBanner, setShowBanner] = useState(true);
-  const people = useMemo(() => shuffleForeigners(), []);
-  const todayLabel = useMemo(() => new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" }).format(new Date()), []);
+  const [todayLabel, setTodayLabel] = useState("");
+
+  useEffect(() => {
+    setTodayLabel(
+      new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        day: "numeric",
+      }).format(new Date()),
+    );
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -38,12 +47,13 @@ function Home() {
       <section className="hero-surface px-5 pb-10 pt-12">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="font-display text-[2.1rem] font-extrabold leading-tight tracking-tight sm:text-5xl">
-            Get paid by <span className="text-primary">chatting with foreigners</span> about
+            Get paid by{" "}
+            <span className="text-primary">chatting with foreigners</span> about
             different topics
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Ungana na wageni kutoka nchi mbalimbali duniani, wafundishe Kiswahili, na ulipwe
-            kwa muda unaotumia kuchati.
+            Ungana na wageni kutoka nchi mbalimbali duniani, wafundishe
+            Kiswahili, na ulipwe kwa muda unaotumia kuchati.
           </p>
           <div className="mx-auto mt-8 h-1.5 w-28 rounded-full bg-primary" />
         </div>
@@ -57,11 +67,10 @@ function Home() {
               AVAILABLE NOW
             </h2>
           </div>
-
         </div>
 
         <div className="mt-6 grid gap-6">
-          {people.map((p, i) => (
+          {foreigners.map((p) => (
             <article
               key={p.id}
               className="rounded-3xl border border-border bg-card p-5 shadow-card"
