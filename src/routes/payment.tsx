@@ -78,10 +78,15 @@ function PaymentPage() {
   async function callAutomatic(body: Record<string, unknown>) {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) throw new Error("Login session imekwisha. Ingia tena.");
-    const response = await fetch("/api/fimipay", {
-      method: "POST",
+    const isStatusCheck = body.action === "status";
+    const requestId = typeof body.paymentId === "string" ? body.paymentId : "";
+    const url = isStatusCheck
+      ? `/api/fimipay/payment-status?requestId=${encodeURIComponent(requestId)}`
+      : "/api/fimipay/payment";
+    const response = await fetch(url, {
+      method: isStatusCheck ? "GET" : "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+      ...(isStatusCheck ? {} : { body: JSON.stringify(body) }),
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || !data) throw new Error(data?.error || "Imeshindikana kuanzisha malipo.");

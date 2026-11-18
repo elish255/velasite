@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const DALIPAY_BASE_URL = (process.env["DALIPAY_API_BASE_URL"] || "").replace(/\/$/, "");
-const CREATE_URL = process.env["DALIPAY_CREATE_COLLECTION_URL"] || `${DALIPAY_BASE_URL}/api/v1/collections`;
-const STATUS_URL = process.env["DALIPAY_COLLECTION_STATUS_URL"] || `${DALIPAY_BASE_URL}/api/v1/collections`;
+function getDaliPayApiBaseUrl() {
+  const baseUrl = requiredEnv("DALIPAY_API_BASE_URL").replace(/\/+$/, "");
+  return baseUrl.endsWith("/api/v1") ? baseUrl : `${baseUrl}/api/v1`;
+}
 
 export type FimipayResult = {
   ok: boolean;
@@ -68,6 +69,8 @@ export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): Fimipay
   const root = object(raw);
   const data = dataOf(raw);
   const reference = firstString(
+    data["uuid"],
+    root["uuid"],
     data["order_id"],
     data["orderId"],
     data["reference"],
@@ -90,8 +93,8 @@ export function normalizeFimipayResponse(raw: unknown, httpOk: boolean): Fimipay
   );
   const status = normalizeStatus(raw);
   const message = firstString(root["message"], data["message"], root["error"]);
-  const rootStatus = typeof root["status"] === "string" ? root["status"].toLowerCase() : "";
-  const ok = httpOk && (root["success"] === true || ["", "success", "successful", "pending", "processing"].includes(rootStatus));
+  const acceptedStatuses = ["success", "successful", "processing", "pending", "awaiting_approval"];
+  const ok = httpOk && root["success"] !== false && (root["success"] === true || acceptedStatuses.includes((status ?? "").toLowerCase()));
   return { ok, raw, reference, checkoutUrl, status, message };
 }
 
@@ -142,14 +145,14 @@ export async function createFimipayPayment(input: {
     external_id: `vela_${Date.now()}`.slice(0, 30),
     customer_name: input.fullName || "1Vela User",
   };
-  const result = await fimipayFetch(CREATE_URL, payload, 20000);
+  const result = await fimipayFetch(`${getDaliPayApiBaseUrl()}/collections`, payload, 20000);
   return normalizeFimipayResponse(result.json, result.response.ok);
 }
 
 export async function getFimipayOrderStatus(orderId: string) {
   const publicKey = requiredEnv("DALIPAY_PUBLIC_KEY");
   const secretKey = requiredEnv("DALIPAY_SECRET_KEY");
-  const response = await fetch(`${STATUS_URL}/${encodeURIComponent(orderId)}/status`, {
+  const response = await fetch(`${getDaliPayApiBaseUrl()}/collections/${encodeURIComponent(orderId)}/status`, {
     headers: { Accept: "application/json", "X-Public-Key": publicKey, "X-Secret-Key": secretKey },
     signal: AbortSignal.timeout(12000),
   });
