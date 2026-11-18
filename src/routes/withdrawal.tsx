@@ -41,21 +41,34 @@ function WithdrawalPage() {
       return;
     }
 
-    const [{ data: profile }, { data: rows }] = await Promise.all([
-      supabase.from("profiles").select("balance, banned").eq("id", auth.user.id).maybeSingle(),
-      supabase
-        .from("withdrawal_requests")
-        .select("id, amount, phone, status, created_at, processed_at, fee, payout_amount, provider_reference")
-        .eq("user_id", auth.user.id)
-        .order("created_at", { ascending: false }),
-    ]);
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("balance, activated, banned")
+      .eq("id", auth.user.id)
+      .maybeSingle();
 
-    if (profile?.banned) {
+    if (profileError || !profile) {
+      toast.error("Imeshindikana kuthibitisha akaunti yako. Jaribu tena.");
+      navigate({ to: "/payment" });
+      return;
+    }
+    if (profile.banned) {
       await supabase.auth.signOut();
       navigate({ to: "/login", search: {} });
       return;
     }
-    setBalance(Number(profile?.balance ?? 0));
+    if (!profile.activated) {
+      navigate({ to: "/payment" });
+      return;
+    }
+
+    const { data: rows } = await supabase
+      .from("withdrawal_requests")
+      .select("id, amount, phone, status, created_at, processed_at, fee, payout_amount, provider_reference")
+      .eq("user_id", auth.user.id)
+      .order("created_at", { ascending: false });
+
+    setBalance(Number(profile.balance ?? 0));
     setHistory((rows as Withdrawal[]) ?? []);
     setCount(rows?.length ?? 0);
     setLoading(false);

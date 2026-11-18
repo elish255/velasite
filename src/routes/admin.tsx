@@ -98,7 +98,7 @@ function AdminPage() {
     if (showSpinner) setRefreshing(true);
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
-      navigate({ to: "/login", search: {} });
+      navigate({ to: "/admin-login" });
       return;
     }
     const { data: adminRow } = await supabase.from("admin_users").select("user_id").eq("user_id", auth.user.id).maybeSingle();
@@ -135,7 +135,7 @@ function AdminPage() {
     const timeout = window.setTimeout(async () => {
       await supabase.auth.signOut();
       toast.info("Admin session imekwisha. Ingia tena.");
-      navigate({ to: "/login", search: {} });
+      navigate({ to: "/admin-login" });
     }, 30 * 60 * 1000);
     return () => window.clearTimeout(timeout);
   }, [authorized, navigate]);

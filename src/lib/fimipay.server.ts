@@ -136,6 +136,7 @@ export async function createFimipayPayment(input: {
   provider: string;
   fullName: string;
   email: string;
+  externalId: string;
 }) {
   const phone = normalizeTanzaniaPhone(input.phone);
   const payload = {
@@ -143,7 +144,7 @@ export async function createFimipayPayment(input: {
     amount: input.amount,
     currency: "TZS",
     provider: input.provider,
-    external_id: `vela_${Date.now()}`.slice(0, 30),
+    external_id: `bt_${input.externalId.replace(/-/g, "").slice(0, 27)}`,
     customer_name: input.fullName || "1Vela User",
   };
   const result = await fimipayFetch(`${getDaliPayApiBaseUrl()}/collections`, payload, 20000);

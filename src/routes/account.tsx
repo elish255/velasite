@@ -70,12 +70,32 @@ function AccountPage() {
       return;
     }
 
-    const [{ data: row }, { data: notificationRows }, { data: withdrawalRows }, { data: rewardRows }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, phone, balance, activated, banned, ban_reason")
-        .eq("id", user.id)
-        .maybeSingle(),
+    const { data: row, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, phone, balance, activated, banned, ban_reason")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !row) {
+      toast.error("Imeshindikana kuthibitisha akaunti yako. Jaribu tena.");
+      navigate({ to: "/payment" });
+      return;
+    }
+
+    const nextProfile = row as Profile;
+    if (nextProfile.banned) {
+      await supabase.auth.signOut();
+      toast.error(nextProfile.ban_reason || "Akaunti yako imezuiwa.");
+      navigate({ to: "/login", search: {} });
+      return;
+    }
+
+    if (!nextProfile.activated) {
+      navigate({ to: "/payment" });
+      return;
+    }
+
+    const [{ data: notificationRows }, { data: withdrawalRows }, { data: rewardRows }] = await Promise.all([
       supabase
         .from("notifications")
         .select("id, user_id, title, message, created_at, read_at")
@@ -91,19 +111,6 @@ function AccountPage() {
         .select("amount")
         .eq("user_id", user.id),
     ]);
-
-    const nextProfile = row as Profile | null;
-    if (nextProfile?.banned) {
-      await supabase.auth.signOut();
-      toast.error(nextProfile.ban_reason || "Akaunti yako imezuiwa.");
-      navigate({ to: "/login", search: {} });
-      return;
-    }
-
-    if (nextProfile && !nextProfile.activated) {
-      navigate({ to: "/payment" });
-      return;
-    }
 
     setEmail(user.email ?? "");
     setChatUserId(user.id);

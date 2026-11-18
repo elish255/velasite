@@ -12,8 +12,8 @@ function isFailureStatus(status: string | null) {
 }
 
 async function saveProviderResult(requestId: string, result: ReturnType<typeof normalizeFimipayResponse>) {
-  const success = isSuccessStatus(result.status);
-  const failed = isFailureStatus(result.status);
+  const success = result.ok && isSuccessStatus(result.status);
+  const failed = result.ok && isFailureStatus(result.status);
   const patch: any = {
     provider: "automatic",
     provider_reference: result.reference,
@@ -58,7 +58,12 @@ export async function handleFimipayPayment(request: Request) {
     .select("id,phone,amount,status,provider,provider_reference,provider_status,provider_checkout_url,paid_at")
     .eq("user_id", auth.userId).eq("provider", "automatic").eq("status", "pending")
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (pending) return json({ request: pending, message: "Ombi la malipo tayari limetumwa. Angalia simu yako." });
+  if (pending) return json({
+    request: pending,
+    paymentId: pending.id,
+    status: pending.provider_status || "PENDING",
+    message: "Ombi la malipo tayari limetumwa. Angalia simu yako.",
+  });
 
   const amount = 15000;
   const { data: created, error: createError } = await auth.supabase.from("payment_requests")
@@ -67,7 +72,14 @@ export async function handleFimipayPayment(request: Request) {
   if (createError || !created) return json({ error: createError?.message ?? "Payment request failed" }, 400);
 
   try {
-    const result = await createFimipayPayment({ amount, phone, provider, fullName: profile.full_name || "1Vela User", email: userData.user?.email ?? "" });
+    const result = await createFimipayPayment({
+      amount,
+      phone,
+      provider,
+      fullName: profile.full_name || "1Vela User",
+      email: userData.user?.email ?? "",
+      externalId: created.id,
+    });
     const saved = await saveProviderResult(created.id, result);
     if (!result.ok) {
       if (!result.reference && !result.status) await supabaseAdmin.from("payment_requests").delete().eq("id", created.id).eq("status", "pending");
@@ -94,7 +106,9 @@ export async function handleFimipayPaymentStatus(request: Request) {
   if (!auth) return json({ error: "Unauthorized" }, 401);
   const url = new URL(request.url);
   const requestId = url.searchParams.get("requestId");
-  if (!requestId) return json({ error: "requestId is required" }, 400);
+  if (!requestId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+    return json({ error: "requestId must be a valid payment UUID" }, 400);
+  }
 
   const { data: payment } = await auth.supabase.from("payment_requests")
     .select("id,user_id,status,provider,provider_reference,provider_status,provider_checkout_url,amount,phone,paid_at")
@@ -106,13 +120,24 @@ export async function handleFimipayPaymentStatus(request: Request) {
 
   try {
     const result = await getFimipayOrderStatus(payment.provider_reference);
+    if (!result.ok) {
+      return json({
+        paid: false,
+        failed: false,
+        status: payment.provider_status || "PENDING",
+        request: payment,
+        warning: result.message || "Malipo bado hayajathibitishwa na DaliPay.",
+      });
+    }
+
     const saved = await saveProviderResult(payment.id, result);
+    const paid = isSuccessStatus(result.status);
     return json({
-      paid: isSuccessStatus(result.status),
+      paid,
       failed: isFailureStatus(result.status),
       status: result.status || "PENDING",
       request: saved ?? payment,
-      redirect: isSuccessStatus(result.status) ? "/account" : undefined,
+      redirect: paid ? "/account" : undefined,
     });
   } catch (error) {
     return json({ paid: false, status: payment.provider_status || "PENDING", request: payment, warning: error instanceof Error ? error.message : "Status check failed." });
@@ -212,14 +237,10 @@ export async function handleFimipayWithdrawal(request: Request) {
 }
 
 export async function handleFimipayWebhook(request: Request) {
-  // Provider webhooks are optional. The browser status polling above is the primary confirmation path.
-  let payload: unknown;
-  try { payload = await request.json(); } catch { return json({ received: false }, 400); }
-  const normalized = normalizeFimipayResponse(payload, true);
-  if (!normalized.reference) return json({ received: true, matched: false });
-  const { data: payment } = await supabaseAdmin.from("payment_requests").select("id,user_id").eq("provider_reference", normalized.reference).maybeSingle();
-  if (!payment) return json({ received: true, matched: false });
-  await saveProviderResult(payment.id, normalized);
-  return json({ received: true, matched: true });
+  void request;
+  return json({
+    received: false,
+    error: "Webhook signatures are not configured. Payment status is verified through authenticated polling.",
+  }, 410);
 }
 
