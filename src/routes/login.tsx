@@ -124,6 +124,9 @@ function LoginPage() {
             Jisajili sasa
           </Link>
         </p>
+        <Link to="/admin-login" className="mt-5 block text-center text-xs font-semibold text-muted-foreground hover:text-primary">
+          Admin login
+        </Link>
       </main>
     </div>
   );
